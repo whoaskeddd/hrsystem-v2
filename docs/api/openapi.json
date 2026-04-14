@@ -1,0 +1,186 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HR Platform API",
+    "version": "0.1.0",
+    "description": "Черновой OpenAPI-контракт для HR Platform на основе README.MD и plan.md."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000/api/v1",
+      "description": "Local development"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    { "name": "Auth" },
+    { "name": "Users" },
+    { "name": "Companies" },
+    { "name": "Vacancies" },
+    { "name": "Resumes" },
+    { "name": "Applications" },
+    { "name": "Favorites" },
+    { "name": "Chats" },
+    { "name": "Calls" },
+    { "name": "Notifications" },
+    { "name": "Admin" }
+  ],
+  "paths": {
+    "/auth/register": { "post": { "tags": ["Auth"], "summary": "Регистрация пользователя", "responses": { "201": { "description": "Создано" } } } },
+    "/auth/login": { "post": { "tags": ["Auth"], "summary": "Вход пользователя", "responses": { "200": { "description": "Успешный вход" } } } },
+    "/auth/logout": { "post": { "tags": ["Auth"], "summary": "Выход пользователя", "responses": { "204": { "description": "Выход выполнен" } } } },
+    "/auth/refresh": { "post": { "tags": ["Auth"], "summary": "Обновление токена", "responses": { "200": { "description": "Токен обновлен" } } } },
+    "/auth/forgot-password": { "post": { "tags": ["Auth"], "summary": "Запрос восстановления пароля", "responses": { "204": { "description": "Письмо отправлено" } } } },
+    "/auth/reset-password": { "post": { "tags": ["Auth"], "summary": "Сброс пароля", "responses": { "204": { "description": "Пароль обновлен" } } } },
+
+    "/users/me": {
+      "get": { "tags": ["Users"], "summary": "Текущий пользователь", "responses": { "200": { "description": "Профиль пользователя" } } },
+      "patch": { "tags": ["Users"], "summary": "Обновить текущего пользователя", "responses": { "200": { "description": "Пользователь обновлен" } } }
+    },
+    "/candidate/profile": {
+      "get": { "tags": ["Users"], "summary": "Профиль соискателя", "responses": { "200": { "description": "Профиль соискателя" } } },
+      "patch": { "tags": ["Users"], "summary": "Обновить профиль соискателя", "responses": { "200": { "description": "Профиль обновлен" } } }
+    },
+    "/employer/profile": {
+      "get": { "tags": ["Users"], "summary": "Профиль работодателя", "responses": { "200": { "description": "Профиль работодателя" } } },
+      "patch": { "tags": ["Users"], "summary": "Обновить профиль работодателя", "responses": { "200": { "description": "Профиль обновлен" } } }
+    },
+
+    "/companies": { "post": { "tags": ["Companies"], "summary": "Создать компанию", "responses": { "201": { "description": "Компания создана" } } } },
+    "/companies/{company_id}": {
+      "get": { "tags": ["Companies"], "summary": "Получить компанию", "responses": { "200": { "description": "Компания" } } },
+      "patch": { "tags": ["Companies"], "summary": "Обновить компанию", "responses": { "200": { "description": "Компания обновлена" } } }
+    },
+    "/companies/{company_id}/verify": { "post": { "tags": ["Companies"], "summary": "Верифицировать компанию", "responses": { "200": { "description": "Компания верифицирована" } } } },
+
+    "/vacancies": {
+      "get": { "tags": ["Vacancies"], "summary": "Список вакансий", "responses": { "200": { "description": "Список вакансий" } } },
+      "post": { "tags": ["Vacancies"], "summary": "Создать вакансию", "responses": { "201": { "description": "Вакансия создана" } } }
+    },
+    "/vacancies/{vacancy_id}": {
+      "get": { "tags": ["Vacancies"], "summary": "Получить вакансию", "responses": { "200": { "description": "Вакансия" } } },
+      "patch": { "tags": ["Vacancies"], "summary": "Обновить вакансию", "responses": { "200": { "description": "Вакансия обновлена" } } },
+      "delete": { "tags": ["Vacancies"], "summary": "Удалить вакансию", "responses": { "204": { "description": "Вакансия удалена" } } }
+    },
+    "/vacancies/{vacancy_id}/publish": { "post": { "tags": ["Vacancies"], "summary": "Опубликовать вакансию", "responses": { "200": { "description": "Вакансия опубликована" } } } },
+    "/vacancies/{vacancy_id}/archive": { "post": { "tags": ["Vacancies"], "summary": "Архивировать вакансию", "responses": { "200": { "description": "Вакансия архивирована" } } } },
+
+    "/resumes": {
+      "get": { "tags": ["Resumes"], "summary": "Список резюме", "responses": { "200": { "description": "Список резюме" } } },
+      "post": { "tags": ["Resumes"], "summary": "Создать резюме", "responses": { "201": { "description": "Резюме создано" } } }
+    },
+    "/resumes/{resume_id}": {
+      "get": { "tags": ["Resumes"], "summary": "Получить резюме", "responses": { "200": { "description": "Резюме" } } },
+      "patch": { "tags": ["Resumes"], "summary": "Обновить резюме", "responses": { "200": { "description": "Резюме обновлено" } } },
+      "delete": { "tags": ["Resumes"], "summary": "Удалить резюме", "responses": { "204": { "description": "Резюме удалено" } } }
+    },
+
+    "/applications": {
+      "get": { "tags": ["Applications"], "summary": "Список откликов", "responses": { "200": { "description": "Список откликов" } } },
+      "post": { "tags": ["Applications"], "summary": "Создать отклик", "responses": { "201": { "description": "Отклик создан" } } }
+    },
+    "/applications/{application_id}": {
+      "get": { "tags": ["Applications"], "summary": "Получить отклик", "responses": { "200": { "description": "Отклик" } } },
+      "delete": { "tags": ["Applications"], "summary": "Отменить отклик", "responses": { "204": { "description": "Отклик удален" } } }
+    },
+    "/applications/{application_id}/status": { "patch": { "tags": ["Applications"], "summary": "Обновить статус отклика", "responses": { "200": { "description": "Статус обновлен" } } } },
+
+    "/favorites/vacancies": { "get": { "tags": ["Favorites"], "summary": "Избранные вакансии", "responses": { "200": { "description": "Избранные вакансии" } } } },
+    "/favorites/vacancies/{vacancy_id}": {
+      "post": { "tags": ["Favorites"], "summary": "Добавить вакансию в избранное", "responses": { "204": { "description": "Добавлено в избранное" } } },
+      "delete": { "tags": ["Favorites"], "summary": "Удалить вакансию из избранного", "responses": { "204": { "description": "Удалено из избранного" } } }
+    },
+    "/favorites/resumes": { "get": { "tags": ["Favorites"], "summary": "Избранные резюме", "responses": { "200": { "description": "Избранные резюме" } } } },
+    "/favorites/resumes/{resume_id}": {
+      "post": { "tags": ["Favorites"], "summary": "Добавить резюме в избранное", "responses": { "204": { "description": "Добавлено в избранное" } } },
+      "delete": { "tags": ["Favorites"], "summary": "Удалить резюме из избранного", "responses": { "204": { "description": "Удалено из избранного" } } }
+    },
+
+    "/chats": {
+      "get": { "tags": ["Chats"], "summary": "Список чатов", "responses": { "200": { "description": "Список чатов" } } },
+      "post": { "tags": ["Chats"], "summary": "Создать чат", "responses": { "201": { "description": "Чат создан" } } }
+    },
+    "/chats/{chat_id}": { "get": { "tags": ["Chats"], "summary": "Получить чат", "responses": { "200": { "description": "Чат" } } } },
+    "/chats/{chat_id}/messages": {
+      "get": { "tags": ["Chats"], "summary": "Получить сообщения чата", "responses": { "200": { "description": "Список сообщений" } } },
+      "post": { "tags": ["Chats"], "summary": "Отправить сообщение", "responses": { "201": { "description": "Сообщение отправлено" } } }
+    },
+    "/chats/{chat_id}/read": { "post": { "tags": ["Chats"], "summary": "Пометить чат как прочитанный", "responses": { "204": { "description": "Чат обновлен" } } } },
+
+    "/calls": {
+      "get": { "tags": ["Calls"], "summary": "История звонков", "responses": { "200": { "description": "История звонков" } } },
+      "post": { "tags": ["Calls"], "summary": "Создать звонок", "responses": { "201": { "description": "Звонок создан" } } }
+    },
+    "/calls/{call_id}": { "get": { "tags": ["Calls"], "summary": "Получить звонок", "responses": { "200": { "description": "Звонок" } } } },
+    "/calls/{call_id}/status": { "patch": { "tags": ["Calls"], "summary": "Обновить статус звонка", "responses": { "200": { "description": "Статус звонка обновлен" } } } },
+
+    "/notifications": { "get": { "tags": ["Notifications"], "summary": "Получить уведомления", "responses": { "200": { "description": "Список уведомлений" } } } },
+    "/notifications/read-all": { "post": { "tags": ["Notifications"], "summary": "Пометить все уведомления прочитанными", "responses": { "204": { "description": "Уведомления обновлены" } } } },
+    "/notifications/{notification_id}/read": { "post": { "tags": ["Notifications"], "summary": "Пометить уведомление прочитанным", "responses": { "204": { "description": "Уведомление обновлено" } } } },
+    "/notification-settings": {
+      "get": { "tags": ["Notifications"], "summary": "Получить настройки уведомлений", "responses": { "200": { "description": "Настройки уведомлений" } } },
+      "patch": { "tags": ["Notifications"], "summary": "Обновить настройки уведомлений", "responses": { "200": { "description": "Настройки обновлены" } } }
+    },
+
+    "/admin/users": { "get": { "tags": ["Admin"], "summary": "Список пользователей для админки", "responses": { "200": { "description": "Список пользователей" } } } },
+    "/admin/users/{user_id}/block": { "patch": { "tags": ["Admin"], "summary": "Заблокировать пользователя", "responses": { "200": { "description": "Пользователь заблокирован" } } } },
+    "/admin/users/{user_id}/unblock": { "patch": { "tags": ["Admin"], "summary": "Разблокировать пользователя", "responses": { "200": { "description": "Пользователь разблокирован" } } } },
+    "/admin/companies": { "get": { "tags": ["Admin"], "summary": "Список компаний для админки", "responses": { "200": { "description": "Список компаний" } } } },
+    "/admin/vacancies": { "get": { "tags": ["Admin"], "summary": "Список вакансий для админки", "responses": { "200": { "description": "Список вакансий" } } } },
+    "/admin/resumes": { "get": { "tags": ["Admin"], "summary": "Список резюме для админки", "responses": { "200": { "description": "Список резюме" } } } },
+    "/admin/reports": { "get": { "tags": ["Admin"], "summary": "Список жалоб", "responses": { "200": { "description": "Список жалоб" } } } },
+    "/admin/reports/{report_id}/status": { "patch": { "tags": ["Admin"], "summary": "Обновить статус жалобы", "responses": { "200": { "description": "Статус жалобы обновлен" } } } },
+    "/admin/logs": { "get": { "tags": ["Admin"], "summary": "Логи системы", "responses": { "200": { "description": "Логи системы" } } } }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": { "type": "object", "properties": { "id": { "type": "string" }, "email": { "type": "string" }, "full_name": { "type": "string" }, "role": { "type": "string" }, "status": { "type": "string" } } },
+      "CandidateProfile": { "type": "object", "properties": { "user_id": { "type": "string" }, "headline": { "type": "string" }, "about": { "type": "string" }, "city": { "type": "string" }, "experience_years": { "type": "integer" } } },
+      "EmployerProfile": { "type": "object", "properties": { "user_id": { "type": "string" }, "company_id": { "type": "string" }, "position": { "type": "string" } } },
+      "Company": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "description": { "type": "string" }, "is_verified": { "type": "boolean" } } },
+      "Vacancy": { "type": "object", "properties": { "id": { "type": "string" }, "company_id": { "type": "string" }, "title": { "type": "string" }, "description": { "type": "string" }, "status": { "type": "string" } } },
+      "Resume": { "type": "object", "properties": { "id": { "type": "string" }, "candidate_id": { "type": "string" }, "title": { "type": "string" }, "visibility": { "type": "string" }, "status": { "type": "string" } } },
+      "Application": { "type": "object", "properties": { "id": { "type": "string" }, "vacancy_id": { "type": "string" }, "resume_id": { "type": "string" }, "status": { "type": "string" } } },
+      "Chat": { "type": "object", "properties": { "id": { "type": "string" }, "context_type": { "type": "string" }, "last_message_preview": { "type": "string" } } },
+      "Message": { "type": "object", "properties": { "id": { "type": "string" }, "chat_id": { "type": "string" }, "sender_id": { "type": "string" }, "content": { "type": "string" }, "status": { "type": "string" } } },
+      "Call": { "type": "object", "properties": { "id": { "type": "string" }, "chat_id": { "type": "string" }, "status": { "type": "string" }, "summary": { "type": "string" } } },
+      "NotificationSettings": { "type": "object", "properties": { "email_enabled": { "type": "boolean" }, "push_enabled": { "type": "boolean" }, "in_app_enabled": { "type": "boolean" } } },
+      "Notification": { "type": "object", "properties": { "id": { "type": "string" }, "type": { "type": "string" }, "title": { "type": "string" }, "is_read": { "type": "boolean" } } },
+      "Report": { "type": "object", "properties": { "id": { "type": "string" }, "entity_type": { "type": "string" }, "status": { "type": "string" } } },
+      "RegisterRequest": { "type": "object" },
+      "LoginRequest": { "type": "object" },
+      "RefreshTokenRequest": { "type": "object" },
+      "ForgotPasswordRequest": { "type": "object" },
+      "ResetPasswordRequest": { "type": "object" },
+      "AuthResponse": { "type": "object" },
+      "UserUpdateRequest": { "type": "object" },
+      "ApplicationStatusRequest": { "type": "object" },
+      "ChatCreateRequest": { "type": "object" },
+      "MessageCreateRequest": { "type": "object" },
+      "CallCreateRequest": { "type": "object" },
+      "CallStatusRequest": { "type": "object" },
+      "VacancyListResponse": { "type": "object" },
+      "ResumeListResponse": { "type": "object" },
+      "ApplicationListResponse": { "type": "object" },
+      "ChatListResponse": { "type": "object" },
+      "MessageListResponse": { "type": "object" },
+      "CallListResponse": { "type": "object" },
+      "NotificationListResponse": { "type": "object" },
+      "UserListResponse": { "type": "object" },
+      "CompanyListResponse": { "type": "object" },
+      "ReportListResponse": { "type": "object" },
+      "LogListResponse": { "type": "object" }
+    }
+  }
+}
