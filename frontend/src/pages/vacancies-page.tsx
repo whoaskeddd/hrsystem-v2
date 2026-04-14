@@ -1,50 +1,16 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { FilterPanel } from "../shared/ui/filter-panel";
 import { FilterSection } from "../shared/ui/filter-section";
 import { useDelayedLoading } from "../shared/hooks/use-delayed-loading";
+import { Input } from "../shared/ui/input";
 import { ListItem } from "../shared/ui/list-item";
 import { PageTopBar } from "../shared/ui/page-top-bar";
 import { Skeleton } from "../shared/ui/skeleton";
 import { Tag } from "../shared/ui/tag";
-
-const vacancyCards = [
-  {
-    title: "Старший frontend-инженер",
-    company: "Aurum Labs",
-    salary: "200 000 ₽",
-    experience: "3-6 лет",
-    format: "Гибрид",
-    location: "Москва",
-    note: "React, TypeScript, дизайн-системы, продуктовые интерфейсы и внутренняя аналитика.",
-  },
-  {
-    title: "Продуктовый дизайнер",
-    company: "Northwind HR",
-    salary: "230 000 ₽",
-    experience: "3-6 лет",
-    format: "Удаленно",
-    location: "Санкт-Петербург",
-    note: "B2B UX, поисковые сценарии, воронки отклика и качественная типографика.",
-  },
-  {
-    title: "HR-аналитик",
-    company: "Atlas Systems",
-    salary: "170 000 ₽",
-    experience: "1-3 года",
-    format: "Офис",
-    location: "Москва",
-    note: "Отчетность, продуктовые дашборды и аналитика подбора.",
-  },
-  {
-    title: "Руководитель подбора",
-    company: "Verve Group",
-    salary: "260 000 ₽",
-    experience: "6+ лет",
-    format: "Гибрид",
-    location: "Москва",
-    note: "Лидирование команды рекрутинга, intake, SLA и hiring operations.",
-  },
-];
 
 function VacanciesSkeleton() {
   return (
@@ -75,7 +41,23 @@ function VacanciesSkeleton() {
 }
 
 export function VacanciesPage() {
+  const navigate = useNavigate();
+  const { data } = useAppContext();
   const { isLoaded, showSkeleton } = useDelayedLoading({ totalMs: 920, delayMs: 220 });
+  const [search, setSearch] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
+  const vacancyCards = useMemo(
+    () =>
+      data.vacancies.filter((item) => {
+        const searchMatch =
+          item.title.toLowerCase().includes(search.toLowerCase()) ||
+          item.companyName.toLowerCase().includes(search.toLowerCase()) ||
+          item.note.toLowerCase().includes(search.toLowerCase());
+        const formatMatch = selectedFormat ? item.format === selectedFormat : true;
+        return item.status === "published" && searchMatch && formatMatch;
+      }),
+    [data.vacancies, search, selectedFormat],
+  );
 
   return (
     <div className="page-enter space-y-6">
@@ -84,9 +66,7 @@ export function VacanciesPage() {
         subtitle="Поиск вакансий с фильтрами, похожими на hh.ru: левый rail, быстрые параметры, понятная сортировка и удобное сканирование карточек."
         actions={
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px]">
-            <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-muted">
-              Должность, навык, компания
-            </div>
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Должность, навык, компания" className="rounded-full" />
             <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">
               Сортировка: по дате
             </div>
@@ -106,7 +86,7 @@ export function VacanciesPage() {
             action={<span className="text-xs uppercase tracking-[0.18em] text-secondary">Расширенный поиск</span>}
             footer={
               <div className="flex flex-col gap-3 pt-2">
-                <Button fullWidth>Показать 124 вакансии</Button>
+                <Button fullWidth>Показать {vacancyCards.length} вакансии</Button>
                 <Button variant="secondary" fullWidth>
                   Сохранить поиск
                 </Button>
@@ -141,16 +121,18 @@ export function VacanciesPage() {
 
             <FilterSection title="Формат работы">
               <div className="flex flex-wrap gap-2">
-                {["Удаленно", "Гибрид", "Офис", "Разъездной"].map((item, index) => (
-                  <span
+                {["Удаленно", "Гибрид", "Офис"].map((item) => (
+                  <button
+                    type="button"
                     key={item}
+                    onClick={() => setSelectedFormat((current) => (current === item ? null : item))}
                     className={[
                       "rounded-full border px-3 py-2 text-xs",
-                      index < 2 ? "border-gold/40 bg-gold/10 text-gold-soft" : "border-white/10 bg-white/5 text-secondary",
+                      selectedFormat === item ? "border-gold/40 bg-gold/10 text-gold-soft" : "border-white/10 bg-white/5 text-secondary",
                     ].join(" ")}
                   >
                     {item}
-                  </span>
+                  </button>
                 ))}
               </div>
             </FilterSection>
@@ -196,9 +178,9 @@ export function VacanciesPage() {
             <div className={["space-y-4 transition duration-500", isLoaded ? "opacity-100" : "opacity-0"].join(" ")}>
               {vacancyCards.map((item, index) => (
                 <ListItem
-                  key={item.title}
+                  key={item.id}
                   title={item.title}
-                  subtitle={`${item.company} • ${item.location} • ${item.note}`}
+                  subtitle={`${item.companyName} • ${item.location} • ${item.note}`}
                   meta={index === 0 ? "горячая вакансия" : undefined}
                   action={
                     <div className="flex flex-wrap items-center gap-3">
@@ -207,7 +189,7 @@ export function VacanciesPage() {
                         <Tag>{item.experience}</Tag>
                         <Tag>{item.format}</Tag>
                       </div>
-                      <Button>Откликнуться</Button>
+                      <Button onClick={() => navigate(`/vacancies/${item.id}`)}>Открыть</Button>
                       <Button variant="secondary" className="px-4">
                         ★
                       </Button>
@@ -216,6 +198,11 @@ export function VacanciesPage() {
                   accent={index === 0}
                 />
               ))}
+              {vacancyCards.length === 0 ? (
+                <div className="rounded-[22px] border border-white/8 bg-soft/60 p-6 text-sm text-secondary">
+                  По текущим фильтрам ничего не найдено. Сбрось формат работы или измени запрос.
+                </div>
+              ) : null}
               <div className="flex justify-center pt-2">
                 <Button variant="secondary">Показать еще</Button>
               </div>

@@ -1,3 +1,6 @@
+import { useNavigate } from "react-router-dom";
+
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { PageTopBar } from "../shared/ui/page-top-bar";
 import { SectionCard } from "../shared/ui/section-card";
@@ -6,19 +9,16 @@ import { Surface } from "../shared/ui/surface";
 import { TabGroup } from "../shared/ui/tab-group";
 import { Tag } from "../shared/ui/tag";
 
-const featuredVacancies = [
-  { title: "Старший frontend-инженер", company: "Aurum Labs", salary: "280 000 ₽", experience: "5+ лет", location: "Москва / гибрид" },
-  { title: "Продуктовый дизайнер", company: "Northwind HR", salary: "220 000 ₽", experience: "3+ года", location: "Удаленно" },
-  { title: "Технический рекрутер", company: "Verve Group", salary: "180 000 ₽", experience: "2+ года", location: "Санкт-Петербург" },
-  { title: "Руководитель направления подбора", company: "Atlas Systems", salary: "от 320 000 ₽", experience: "6+ лет", location: "Москва" },
-];
-
 export function LandingPage() {
+  const navigate = useNavigate();
+  const { data } = useAppContext();
+  const featuredVacancies = data.vacancies.slice(0, 4);
+
   return (
     <div className="page-enter space-y-8 pb-8">
       <PageTopBar
         title="Найдите работу мечты или наймите лучших кандидатов"
-        subtitle="Премиальная HR-платформа в темной гамме: быстрый поиск, чистая иерархия контента, удобная коммуникация и спокойная визуальная система с мягким золотым акцентом."
+        subtitle="Фронтенд уже закрывает foundation, auth flow и кабинеты для ролей. Backend можно подключать к готовому UI слою без переписывания экранов."
         actions={<TabGroup tabs={["Соискателям", "Компаниям", "Администраторам"]} activeTab="Соискателям" />}
       />
 
@@ -37,12 +37,14 @@ export function LandingPage() {
                     placeholder="Название должности, навык, компания..."
                   />
                 </div>
-                <Button className="justify-center">Найти</Button>
+                <Button className="w-full justify-center" onClick={() => navigate("/vacancies")}>
+                  Найти
+                </Button>
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button>Найти вакансии</Button>
-                <Button variant="secondary">Найти кандидатов</Button>
+                <Button onClick={() => navigate("/vacancies")}>Найти вакансии</Button>
+                <Button variant="secondary" onClick={() => navigate("/resumes")}>Найти кандидатов</Button>
                 <Button variant="ghost">Сохраненные поиски</Button>
               </div>
 
@@ -88,15 +90,15 @@ export function LandingPage() {
                 <li>Мягкие анимации и skeleton loading по необходимости</li>
               </ul>
             </div>
-            <Surface badge="Следом" title="Что можно подключать дальше" subtitle="Store, авторизация, реальные API-контракты и системный UI-kit без перестройки текущего дизайна." />
+            <Surface badge="Интеграция" title="Что можно подключать дальше" subtitle="JWT auth, profile endpoints, CRUD вакансий и резюме, WebSocket chat и signaling звонков." />
           </div>
         </SectionCard>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Активных вакансий" value="12 480" meta="Вся Россия, офис и удаленный формат" />
-        <StatCard label="Откликов за неделю" value="8 920" meta="С прозрачными статусами по этапам" />
-        <StatCard label="Среднее время найма" value="14 дней" meta="По техническим и продуктовым ролям" />
+        <StatCard label="Активных вакансий" value={String(data.vacancies.length)} meta="Карточки подключены к общему store" />
+        <StatCard label="Кандидатов в базе" value={String(data.resumes.length)} meta="Поиск и фильтры готовы к реальным DTO" />
+        <StatCard label="Новых уведомлений" value={String(data.notifications.filter((item) => !item.isRead).length)} meta="Встроенный центр событий и read state" />
       </section>
 
       <SectionCard title="Избранные вакансии" eyebrow="Подборка">
@@ -106,7 +108,7 @@ export function LandingPage() {
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <h3 className="font-display text-lg font-semibold text-primary">{vacancy.title}</h3>
-                  <p className="mt-1 text-sm text-secondary">{vacancy.company}</p>
+                  <p className="mt-1 text-sm text-secondary">{vacancy.companyName}</p>
                 </div>
                 <span className="text-gold-soft">★</span>
               </div>
@@ -114,7 +116,7 @@ export function LandingPage() {
                 <Tag>{vacancy.salary}</Tag>
                 <Tag>{vacancy.experience}</Tag>
               </div>
-              <p className="text-sm text-secondary">{vacancy.location}</p>
+              <p className="text-sm text-secondary">{vacancy.location} / {vacancy.format}</p>
             </article>
           ))}
         </div>
@@ -140,7 +142,7 @@ export function LandingPage() {
         <SectionCard title="Поддерживаемые сценарии" eyebrow="Собранные экраны">
           <div className="grid gap-4 sm:grid-cols-2">
             {["Поиск вакансий", "Поиск кандидатов", "Карточка вакансии", "Личный кабинет", "Сообщения и звонки", "Административные разделы"].map((item) => (
-              <Surface key={item} className="h-full" title={item} subtitle="Экран уже собран в общей визуальной системе и готов к наполнению реальными данными." />
+              <Surface key={item} className="h-full" title={item} subtitle="Экран уже переведен на единый app state и не зависит от локальных page-level заглушек." />
             ))}
           </div>
         </SectionCard>

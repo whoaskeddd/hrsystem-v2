@@ -1,21 +1,76 @@
+import { useMemo, useState } from "react";
+
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
+import { Input } from "../shared/ui/input";
 import { PageTopBar } from "../shared/ui/page-top-bar";
 import { SectionCard } from "../shared/ui/section-card";
 import { SidebarNav } from "../shared/ui/sidebar-nav";
+import { StatCard } from "../shared/ui/stat-card";
+import { StatusBanner } from "../shared/ui/status-banner";
 import { Surface } from "../shared/ui/surface";
 import { TabGroup } from "../shared/ui/tab-group";
 import { Tag } from "../shared/ui/tag";
+import { Textarea } from "../shared/ui/textarea";
 
 const sidebarItems = ["Профиль", "Резюме", "Отклики", "Избранное", "Подписки", "Чаты", "Звонки", "Уведомления", "Настройки"];
 
 export function CandidateProfilePage() {
+  const { activeCandidateProfile, data, sessionUser, updateCandidateProfile } = useAppContext();
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState(() => ({
+    headline: activeCandidateProfile?.headline ?? "",
+    about: activeCandidateProfile?.about ?? "",
+    location: activeCandidateProfile?.location ?? "",
+    preferredFormat: activeCandidateProfile?.preferredFormat ?? "",
+    salaryExpectation: activeCandidateProfile?.salaryExpectation ?? "",
+    availability: activeCandidateProfile?.availability ?? "",
+  }));
+
+  const currentResumes = useMemo(
+    () => data.resumes.filter((resume) => resume.candidateId === sessionUser?.id),
+    [data.resumes, sessionUser?.id],
+  );
+  const currentApplications = useMemo(
+    () => data.applications.filter((application) => application.candidateId === sessionUser?.id),
+    [data.applications, sessionUser?.id],
+  );
+
+  if (!activeCandidateProfile || !sessionUser) {
+    return null;
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setSuccess(null);
+    setError(null);
+
+    try {
+      await updateCandidateProfile(form);
+      setSuccess("Профиль сохранен. Страница готова к замене mock-state на backend profile endpoint.");
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Не удалось сохранить профиль.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="page-enter space-y-6">
       <PageTopBar
         title="Личный кабинет соискателя"
-        subtitle="Профиль, резюме, отклики и коммуникации собраны в одном спокойном интерфейсе с темной навигацией и золотыми акцентами только в ключевых действиях."
+        subtitle="Полноценный кабинет с профилем, резюме, откликами и уведомлениями. Состояния формы готовы к backend-интеграции."
         actions={<TabGroup tabs={["Профиль", "Резюме", "Отклики"]} activeTab="Профиль" />}
       />
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <StatCard label="Активных резюме" value={String(currentResumes.length)} meta="Данные берутся из общего store" />
+        <StatCard label="Откликов в работе" value={String(currentApplications.length)} meta="Статусы синхронизированы с vacancy flow" />
+        <StatCard label="Новых уведомлений" value={String(data.notifications.filter((item) => !item.isRead).length)} meta="Системные и пользовательские события" />
+      </section>
 
       <div className="grid gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
         <SidebarNav title="Навигация" eyebrow="Личный кабинет" items={sidebarItems} activeItem="Профиль" />
@@ -25,17 +80,18 @@ export function CandidateProfilePage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
-                  <Tag>Старший frontend-разработчик</Tag>
-                  <Tag>6 лет опыта</Tag>
-                  <Tag>Москва</Tag>
-                  <Tag>Открыта к предложениям</Tag>
+                  <Tag>{activeCandidateProfile.headline}</Tag>
+                  <Tag>{activeCandidateProfile.experience}</Tag>
+                  <Tag>{activeCandidateProfile.location}</Tag>
+                  <Tag>{sessionUser.status}</Tag>
                 </div>
                 <p className="max-w-4xl text-sm leading-7 text-secondary">
-                  Специализируется на B2B-интерфейсах, сложных таблицах, фильтрах и внутренней продуктовой аналитике. Ищет зрелую продуктовую команду с вниманием к архитектуре интерфейсов и качеству дизайна.
+                  {activeCandidateProfile.about}
                 </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button>Редактировать профиль</Button>
-                  <Button variant="secondary">Настроить видимость резюме</Button>
+                <div className="flex flex-wrap gap-2">
+                  {activeCandidateProfile.skills.map((skill) => (
+                    <Tag key={skill}>{skill}</Tag>
+                  ))}
                 </div>
               </div>
 
@@ -43,56 +99,92 @@ export function CandidateProfilePage() {
                 <div className="grid gap-3 text-sm text-secondary">
                   <div className="flex items-center justify-between rounded-[18px] border border-white/8 px-4 py-3">
                     <span>Почта</span>
-                    <span className="text-gold-soft">anna@hrplatform.dev</span>
+                    <span className="text-gold-soft">{sessionUser.email}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-[18px] border border-white/8 px-4 py-3">
                     <span>Профиль</span>
-                    <span>/anna-smirnova</span>
+                    <span>/{sessionUser.fullName.toLowerCase().replace(/\s+/g, "-")}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-[18px] border border-white/8 px-4 py-3">
                     <span>Готовность</span>
-                    <span>2 недели</span>
+                    <span>{activeCandidateProfile.availability}</span>
                   </div>
                 </div>
               </Surface>
             </div>
           </SectionCard>
 
+          <SectionCard title="Редактирование профиля" eyebrow="Profile form">
+            <form className="grid gap-4" onSubmit={handleSubmit}>
+              {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
+              {success ? <StatusBanner tone="success">{success}</StatusBanner> : null}
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm text-secondary">Заголовок профиля</label>
+                  <Input value={form.headline} onChange={(event) => setForm((current) => ({ ...current, headline: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-secondary">Локация</label>
+                  <Input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-secondary">Формат работы</label>
+                  <Input value={form.preferredFormat} onChange={(event) => setForm((current) => ({ ...current, preferredFormat: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm text-secondary">Ожидания по доходу</label>
+                  <Input value={form.salaryExpectation} onChange={(event) => setForm((current) => ({ ...current, salaryExpectation: event.target.value }))} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-secondary">О себе</label>
+                <Textarea value={form.about} onChange={(event) => setForm((current) => ({ ...current, about: event.target.value }))} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-secondary">Доступность</label>
+                <Input value={form.availability} onChange={(event) => setForm((current) => ({ ...current, availability: event.target.value }))} />
+              </div>
+
+              <Button type="submit" disabled={isSaving} className="w-fit">
+                {isSaving ? "Сохраняем..." : "Сохранить профиль"}
+              </Button>
+            </form>
+          </SectionCard>
+
           <SectionCard title="Мои резюме" eyebrow="Карточки резюме">
             <div className="grid gap-4 xl:grid-cols-2">
-              {[
-                { title: "Старший frontend-разработчик", level: "Senior", visibility: "Открыто", updated: "Обновлено 2 дня назад" },
-                { title: "Продуктовый дизайнер", level: "Middle+", visibility: "По ссылке", updated: "Обновлено 5 дней назад" },
-              ].map((resume) => (
-                <article key={resume.title} className="rounded-[22px] border border-white/8 bg-soft/60 p-5 transition hover:border-gold/20">
+              {currentResumes.map((resume) => (
+                <article key={resume.id} className="rounded-[22px] border border-white/8 bg-soft/60 p-5 transition hover:border-gold/20">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="font-display text-lg font-semibold text-primary">{resume.title}</h3>
-                      <p className="mt-2 text-sm text-secondary">{resume.updated}</p>
+                      <h3 className="font-display text-lg font-semibold text-primary">{resume.role}</h3>
+                      <p className="mt-2 text-sm text-secondary">{resume.updatedAt}</p>
                     </div>
                     <span className="text-gold-soft">★</span>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Tag>{resume.level}</Tag>
+                    <Tag>{resume.experience}</Tag>
                     <Tag>{resume.visibility}</Tag>
+                    <Tag>{resume.salary}</Tag>
                   </div>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <Button variant="secondary" className="px-4 py-2 text-xs">
-                      Редактировать
-                    </Button>
-                    <Button variant="ghost" className="px-4 py-2 text-xs">
-                      Дублировать
-                    </Button>
-                  </div>
+                  <p className="mt-4 text-sm leading-6 text-secondary">{resume.about}</p>
                 </article>
               ))}
             </div>
           </SectionCard>
 
-          <SectionCard title="Рекомендации" eyebrow="Следующий блок">
+          <SectionCard title="Отклики и сохраненные поиски" eyebrow="Рабочие данные">
             <div className="grid gap-4 xl:grid-cols-3">
-              {["Подходящие вакансии", "Статусы откликов", "Сохраненные компании"].map((item) => (
-                <Surface key={item} title={item} subtitle="После подключения API сюда лягут персонализированные данные профиля." />
+              <Surface title="Текущие отклики" subtitle={currentApplications.map((item) => item.status).join(" • ")} />
+              <Surface title="Сохраненные поиски" subtitle={data.savedSearches.map((item) => item.title).join(" • ")} />
+              <Surface title="Дальше для backend" subtitle="Подключить profile endpoint, CRUD резюме и отдельный application history API." />
+            </div>
+            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+              {activeCandidateProfile.summary.map((item) => (
+                <Surface key={item} title="Ключевой факт" subtitle={item} />
               ))}
             </div>
           </SectionCard>

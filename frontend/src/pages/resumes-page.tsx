@@ -1,38 +1,15 @@
+import { useMemo, useState } from "react";
+
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { FilterPanel } from "../shared/ui/filter-panel";
 import { FilterSection } from "../shared/ui/filter-section";
 import { useDelayedLoading } from "../shared/hooks/use-delayed-loading";
+import { Input } from "../shared/ui/input";
 import { ListItem } from "../shared/ui/list-item";
 import { PageTopBar } from "../shared/ui/page-top-bar";
 import { Skeleton } from "../shared/ui/skeleton";
 import { Tag } from "../shared/ui/tag";
-
-const candidates = [
-  {
-    name: "Анна Смирнова",
-    role: "Старший frontend-разработчик",
-    experience: "5 лет опыта",
-    salary: "200 000 ₽",
-    location: "Москва",
-    skills: ["React", "TypeScript", "Дизайн-системы"],
-  },
-  {
-    name: "Илья Воронцов",
-    role: "Продуктовый дизайнер",
-    experience: "4 года опыта",
-    salary: "220 000 ₽",
-    location: "Санкт-Петербург",
-    skills: ["Figma", "UX", "Исследования"],
-  },
-  {
-    name: "Мария Волкова",
-    role: "Руководитель подбора",
-    experience: "7 лет опыта",
-    salary: "250 000 ₽",
-    location: "Удаленно",
-    skills: ["Подбор", "Аналитика", "Стейкхолдеры"],
-  },
-];
 
 function ResumesSkeleton() {
   return (
@@ -56,7 +33,22 @@ function ResumesSkeleton() {
 }
 
 export function ResumesPage() {
+  const { data } = useAppContext();
   const { isLoaded, showSkeleton } = useDelayedLoading({ totalMs: 980, delayMs: 220 });
+  const [query, setQuery] = useState("");
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const candidates = useMemo(
+    () =>
+      data.resumes.filter((resume) => {
+        const queryMatch =
+          resume.candidateName.toLowerCase().includes(query.toLowerCase()) ||
+          resume.role.toLowerCase().includes(query.toLowerCase()) ||
+          resume.skills.join(" ").toLowerCase().includes(query.toLowerCase());
+        const remoteMatch = remoteOnly ? resume.formatPreference.toLowerCase().includes("удал") : true;
+        return queryMatch && remoteMatch;
+      }),
+    [data.resumes, query, remoteOnly],
+  );
 
   return (
     <div className="page-enter space-y-6">
@@ -65,15 +57,13 @@ export function ResumesPage() {
         subtitle="Экран для работодателя и рекрутера: быстрая фильтрация, понятное сканирование профилей и компактные действия по каждому кандидату."
         actions={
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px]">
-            <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-muted">
-              Навыки, должность, опыт, ключевые слова
-            </div>
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Навыки, должность, опыт, ключевые слова" className="rounded-full" />
             <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">
               Сортировка: релевантность
             </div>
-            <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">
-              Только новые
-            </div>
+            <button type="button" onClick={() => setRemoteOnly((current) => !current)} className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">
+              {remoteOnly ? "Удаленка: только да" : "Удаленка: все"}
+            </button>
           </div>
         }
       />
@@ -86,7 +76,7 @@ export function ResumesPage() {
             hint="Быстрые теги навыков, расширенный поиск и сохраненные подборки можно связать со store на следующем шаге."
             footer={
               <div className="flex flex-col gap-3">
-                <Button fullWidth>Показать 48 кандидатов</Button>
+                <Button fullWidth>Показать {candidates.length} кандидатов</Button>
                 <Button variant="secondary" fullWidth>
                   Сохранить поиск
                 </Button>
@@ -165,8 +155,8 @@ export function ResumesPage() {
             <div className={["space-y-4 transition duration-500", isLoaded ? "opacity-100" : "opacity-0"].join(" ")}>
               {candidates.map((candidate, index) => (
                 <ListItem
-                  key={candidate.name}
-                  title={candidate.name}
+                  key={candidate.id}
+                  title={candidate.candidateName}
                   subtitle={`${candidate.role} • ${candidate.experience} • ${candidate.location}`}
                   meta={index === 0 ? "лучшее совпадение" : undefined}
                   action={
@@ -184,6 +174,11 @@ export function ResumesPage() {
                   accent={index === 0}
                 />
               ))}
+              {candidates.length === 0 ? (
+                <div className="rounded-[22px] border border-white/8 bg-soft/60 p-6 text-sm text-secondary">
+                  В базе нет кандидатов под текущую комбинацию фильтров.
+                </div>
+              ) : null}
             </div>
           )}
         </section>

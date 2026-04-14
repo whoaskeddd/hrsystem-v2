@@ -1,18 +1,36 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
+import { getDashboardPath, useAppContext } from "../../app/app-context";
 import { Button } from "../ui/button";
 
-const mainNavigation = [
+type NavigationItem = {
+  to: string;
+  label: string;
+  end?: boolean;
+};
+
+const publicNavigation: NavigationItem[] = [
   { to: "/", label: "Главная", end: true },
   { to: "/vacancies", label: "Вакансии" },
   { to: "/resumes", label: "Кандидаты" },
-  { to: "/candidate/profile", label: "Кабинет" },
   { to: "/messages", label: "Сообщения" },
   { to: "/calls", label: "Звонки" },
-  { to: "/admin", label: "Админка" },
 ];
 
 export function AppShell() {
+  const navigate = useNavigate();
+  const { data, role, sessionUser, signOut } = useAppContext();
+  const unreadNotifications = data.notifications.filter((item) => !item.isRead).length;
+  const dashboardPath = getDashboardPath(role);
+  const dashboardLabel = role === "employer" ? "Кабинет компании" : role === "admin" ? "Админка" : "Мой кабинет";
+  const roleNavigation: NavigationItem[] =
+    role === "guest"
+      ? []
+      : role === "admin"
+        ? [{ to: "/admin", label: "Админка" }]
+        : [{ to: dashboardPath, label: dashboardLabel }];
+  const navigation: NavigationItem[] = [...publicNavigation, ...roleNavigation];
+
   return (
     <div className="min-h-screen bg-base text-primary">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -33,7 +51,7 @@ export function AppShell() {
           </div>
 
           <nav className="hidden items-center gap-2 xl:flex">
-            {mainNavigation.map((item) => (
+            {navigation.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -54,9 +72,28 @@ export function AppShell() {
 
           <div className="flex items-center gap-3">
             <div className="hidden rounded-full border border-white/8 bg-white/5 px-4 py-2 text-sm text-secondary lg:block">
-              Москва • 12 480 вакансий
+              {sessionUser ? `${sessionUser.fullName} • ${unreadNotifications} новых уведомления` : "Москва • 12 480 вакансий"}
             </div>
-            <Button className="hidden sm:inline-flex">Вход / Регистрация</Button>
+            {sessionUser ? (
+              <div className="hidden items-center gap-2 sm:flex">
+                <Button variant="secondary" onClick={() => navigate(dashboardPath)}>
+                  {dashboardLabel}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    signOut();
+                    navigate("/");
+                  }}
+                >
+                  Выйти
+                </Button>
+              </div>
+            ) : (
+              <Button className="hidden sm:inline-flex" onClick={() => navigate("/auth/login")}>
+                Вход / Регистрация
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -67,7 +104,7 @@ export function AppShell() {
 
       <nav className="sticky bottom-0 z-20 border-t border-white/8 bg-base/90 px-3 py-3 backdrop-blur xl:hidden">
         <div className="grid w-full grid-cols-4 gap-2">
-          {mainNavigation.slice(0, 4).map((item) => (
+          {navigation.slice(0, 4).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

@@ -1,3 +1,6 @@
+import { Link, useParams } from "react-router-dom";
+
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { PageTopBar } from "../shared/ui/page-top-bar";
 import { SectionCard } from "../shared/ui/section-card";
@@ -5,64 +8,48 @@ import { Surface } from "../shared/ui/surface";
 import { Tag } from "../shared/ui/tag";
 
 export function VacancyDetailsPage() {
-  const sections = [
-    {
-      title: "Описание вакансии",
-      points: [
-        "Развитие интерфейсов поиска, откликов и рабочих процессов внутри HR-платформы.",
-        "Работа с темной дизайн-системой и построение устойчивого UI-kit.",
-        "Тесная связка с продуктом, аналитикой и backend-контрактами.",
-      ],
-    },
-    {
-      title: "Обязанности",
-      points: [
-        "Проектировать новые экраны для кандидатов, работодателей и администраторов.",
-        "Поддерживать качество, доступность и адаптивность интерфейсов на desktop и mobile.",
-        "Собирать сложные списки, фильтры, формы и коммуникационные сценарии.",
-      ],
-    },
-    {
-      title: "Требования",
-      points: [
-        "Уверенный React и TypeScript.",
-        "Опыт проектирования сложных продуктовых интерфейсов.",
-        "Понимание UX, дизайн-систем и продуктовых метрик.",
-      ],
-    },
-    {
-      title: "Будет плюсом",
-      points: [
-        "Опыт в HRTech или B2B SaaS.",
-        "Навыки работы с WebSocket/WebRTC UI.",
-        "Умение строить системный frontend, а не только отдельные страницы.",
-      ],
-    },
-  ];
+  const { id } = useParams();
+  const { data } = useAppContext();
+  const vacancy = data.vacancies.find((item) => item.id === id);
+
+  if (!vacancy) {
+    return (
+      <div className="page-enter space-y-6">
+        <SectionCard title="Вакансия не найдена" eyebrow="404">
+          <p className="text-sm text-secondary">Похоже, эта карточка была удалена или ссылка открыта по неверному идентификатору.</p>
+          <div className="mt-4">
+            <Link to="/vacancies">
+              <Button>Вернуться к списку вакансий</Button>
+            </Link>
+          </div>
+        </SectionCard>
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter space-y-6">
       <PageTopBar
-        title="Старший frontend-инженер"
-        subtitle="Вакансия для продуктовой команды, которая строит премиальную HR-платформу с сильным акцентом на поиск, коммуникацию и внутренние рабочие процессы."
+        title={vacancy.title}
+        subtitle={vacancy.description}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Tag>280 000 ₽</Tag>
-            <Tag>5+ лет</Tag>
-            <Tag>Гибрид</Tag>
-            <Tag>Москва</Tag>
-            <Tag>Полная занятость</Tag>
+            <Tag>{vacancy.salary}</Tag>
+            <Tag>{vacancy.experience}</Tag>
+            <Tag>{vacancy.format}</Tag>
+            <Tag>{vacancy.location}</Tag>
+            <Tag>{vacancy.employment}</Tag>
           </div>
         }
       />
 
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <SectionCard title="О роли" eyebrow="Aurum Labs" className="gold-glow-soft overflow-hidden">
+          <SectionCard title="О роли" eyebrow={vacancy.companyName} className="gold-glow-soft overflow-hidden">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
               <div className="space-y-6">
                 <p className="max-w-4xl text-sm leading-7 text-secondary">
-                  Команда строит HR-платформу с акцентом на качество поиска, прозрачный процесс найма и premium dark UI. На этой роли важны системное мышление, аккуратная работа с интерфейсной архитектурой и умение превращать сложные сценарии в спокойный, дорогой по ощущению продукт.
+                  {vacancy.note}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Button>Откликнуться</Button>
@@ -83,14 +70,18 @@ export function VacancyDetailsPage() {
                   </div>
                   <div className="flex items-center justify-between rounded-[18px] border border-white/8 px-4 py-3">
                     <span>Формат</span>
-                    <span>Гибрид / Москва</span>
+                    <span>{vacancy.format} / {vacancy.location}</span>
                   </div>
                 </div>
               </Surface>
             </div>
           </SectionCard>
 
-          {sections.map((section) => (
+          {[
+            { title: "Обязанности", points: vacancy.responsibilities },
+            { title: "Требования", points: vacancy.requirements },
+            { title: "Что предлагаем", points: vacancy.perks },
+          ].map((section) => (
             <SectionCard key={section.title} title={section.title}>
               <ul className="grid gap-3 text-sm leading-7 text-secondary">
                 {section.points.map((point) => (
@@ -106,17 +97,19 @@ export function VacancyDetailsPage() {
         <div className="space-y-6">
           <SectionCard title="Компания" eyebrow="Сайд-карта" className="h-fit">
             <div className="space-y-4 text-sm text-secondary">
-              <Surface title="Aurum Labs" subtitle="B2B SaaS для HR и talent operations. 250+ сотрудников, продуктовая команда в Москве." />
+              <Surface title={vacancy.companyName} subtitle="Карточка компании готова к связке с `GET /companies/{company_id}`." />
               <Surface title="О компании">
                 <p className="text-sm leading-6 text-secondary">
-                  Компания строит спокойные, data-driven интерфейсы для найма и внутренних HR-операций. Сильный упор на продуктовую дисциплину и качество реализации.
+                  Детальная страница уже опирается на единые сущности приложения, поэтому backend сможет подключить реальные данные без перестройки layout.
                 </p>
               </Surface>
               <Surface title="Другие вакансии компании">
                 <div className="space-y-2 text-sm text-secondary">
-                  <p>Продуктовый дизайнер</p>
-                  <p>Руководитель дизайн-системы</p>
-                  <p>Партнер по подбору персонала</p>
+                  {data.vacancies
+                    .filter((item) => item.companyId === vacancy.companyId && item.id !== vacancy.id)
+                    .map((item) => (
+                      <p key={item.id}>{item.title}</p>
+                    ))}
                 </div>
               </Surface>
             </div>

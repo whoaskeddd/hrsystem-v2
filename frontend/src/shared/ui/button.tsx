@@ -23,7 +23,7 @@ export function Button({
   return (
     <button
       className={[
-        "rounded-full border px-5 py-3 text-sm font-medium transition duration-200 hover:-translate-y-0.5",
+        "rounded-full border px-5 py-3 text-sm font-medium transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
         variants[variant],
         fullWidth ? "w-full" : "",
         className,

@@ -1,3 +1,4 @@
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { PageTopBar } from "../shared/ui/page-top-bar";
 import { SectionCard } from "../shared/ui/section-card";
@@ -8,11 +9,13 @@ import { TabGroup } from "../shared/ui/tab-group";
 const adminSections = ["Пользователи", "Компании", "Вакансии", "Резюме", "Жалобы", "Категории", "Логи", "Настройки"];
 
 export function AdminPage() {
+  const { data } = useAppContext();
+
   return (
     <div className="page-enter space-y-6">
       <PageTopBar
         title="Административная панель"
-        subtitle="Интерфейс для модерации, контроля контента и просмотра ключевых системных сущностей. Все собрано в плотную, но чистую dark-сетку."
+        subtitle="Рабочая админская поверхность для модерации, контроля контента и системного обзора. Основана на общих данных приложения."
         actions={<TabGroup tabs={["Модерация", "Логи", "Настройки"]} activeTab="Модерация" />}
       />
 
@@ -30,19 +33,14 @@ export function AdminPage() {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
-              {[
-                ["Пользователь #1024", "Активен • кандидат • Москва"],
-                ["Компания Northwind HR", "На модерации • работодатель"],
-                ["Жалоба #88", "Ожидает разбора • вакансия"],
-                ["Лог события #5412", "Обновление ролей • админ"],
-              ].map(([title, subtitle]) => (
-                <Surface key={title} title={title} subtitle={subtitle}>
+              {data.adminCases.map((item) => (
+                <Surface key={item.id} title={item.title} subtitle={`${item.subtitle} • ${item.priority}`}>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button variant="secondary" className="px-4 py-2 text-xs">
                       Просмотр
                     </Button>
                     <Button variant="ghost" className="px-4 py-2 text-xs">
-                      Действие
+                      {item.actionLabel}
                     </Button>
                   </div>
                 </Surface>
@@ -52,9 +50,9 @@ export function AdminPage() {
 
           <SectionCard title="Сводка модерации" eyebrow="Административная сводка">
             <div className="grid gap-4 xl:grid-cols-3">
-              <Surface title="Жалоб в очереди" subtitle="18 активных кейсов" />
-              <Surface title="Новых компаний" subtitle="6 ожидают проверки" />
-              <Surface title="Системные события" subtitle="24 предупреждения / 0 критических" />
+              <Surface title="Жалоб в очереди" subtitle={`${data.adminCases.length} активных кейсов`} />
+              <Surface title="Новых компаний" subtitle={`${data.users.filter((user) => user.role === "employer").length} работодателя в системе`} />
+              <Surface title="Системные события" subtitle={`${data.notifications.length} событий в notification center`} />
             </div>
           </SectionCard>
         </div>
