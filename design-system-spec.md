@@ -362,16 +362,3 @@ Created there:
 
 Limitation:
 - дальнейшая сборка экранов остановилась из-за лимита вызовов Figma MCP на Starter-плане.
-
-## Recommended Next Step
-
-Когда лимит Figma MCP станет снова доступен, следующий порядок сборки:
-
-1. исправить auto-layout высоту `Foundation Board`
-2. собрать landing frame
-3. собрать `/vacancies`
-4. собрать `/vacancies/:id`
-5. собрать `/candidate/profile`
-6. собрать `/resumes`
-7. собрать `/messages` и call modal
-8. собрать `/admin`
