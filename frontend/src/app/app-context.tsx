@@ -6,6 +6,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import { httpRequest } from "../shared/api/http-client";
 
 export type UserRole = "guest" | "candidate" | "employer" | "admin";
 
@@ -172,6 +173,8 @@ type AppSnapshot = {
 
 type Session = {
   userId: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
 };
 
 type AppContextValue = {
@@ -543,10 +546,50 @@ const initialData: AppSnapshot = {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
+type ApiUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: Exclude<UserRole, "guest">;
+  headline: string;
+  city: string;
+  status: string;
+};
+
+type ApiAuthResponse = {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user: ApiUser;
+};
+
+function toCandidateProfileFromApi(profile: Record<string, unknown>): CandidateProfile {
+  return {
+    userId: String(profile.user_id ?? ""),
+    headline: String(profile.headline ?? ""),
+    about: String(profile.about ?? ""),
+    location: String(profile.location ?? ""),
+    preferredFormat: String(profile.preferred_format ?? ""),
+    salaryExpectation: String(profile.salary_expectation ?? ""),
+    experience: String(profile.experience ?? ""),
+    availability: String(profile.availability ?? ""),
+    skills: Array.isArray(profile.skills) ? profile.skills.map((item) => String(item)) : [],
+    summary: Array.isArray(profile.summary) ? profile.summary.map((item) => String(item)) : [],
+  };
+}
+
+function toEmployerProfileFromApi(profile: Record<string, unknown>): EmployerProfile {
+  return {
+    userId: String(profile.user_id ?? ""),
+    companyId: String(profile.company_id ?? ""),
+    companyName: String(profile.company_name ?? ""),
+    position: String(profile.position ?? ""),
+    aboutCompany: String(profile.about_company ?? ""),
+    office: String(profile.office ?? ""),
+    hiringFocus: Array.isArray(profile.hiring_focus) ? profile.hiring_focus.map((item) => String(item)) : [],
+    teamSize: String(profile.team_size ?? ""),
+    responseRate: String(profile.response_rate ?? ""),
+  };
 }
 
 function readStorage():
@@ -565,7 +608,15 @@ function readStorage():
   }
 
   try {
-    return JSON.parse(rawValue) as { data: AppSnapshot; session: Session };
+    const parsed = JSON.parse(rawValue) as { data: AppSnapshot; session: Partial<Session> };
+    return {
+      data: parsed.data,
+      session: {
+        userId: parsed.session.userId ?? null,
+        accessToken: parsed.session.accessToken ?? null,
+        refreshToken: parsed.session.refreshToken ?? null,
+      },
+    };
   } catch {
     return null;
   }
@@ -586,7 +637,7 @@ function getDashboardPath(role: UserRole) {
 
 export function AppProvider({ children }: PropsWithChildren) {
   const [data, setData] = useState<AppSnapshot>(initialData);
-  const [session, setSession] = useState<Session>({ userId: null });
+  const [session, setSession] = useState<Session>({ userId: null, accessToken: null, refreshToken: null });
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
@@ -612,6 +663,123 @@ export function AppProvider({ children }: PropsWithChildren) {
     );
   }, [authReady, data, session]);
 
+  useEffect(() => {
+    async function hydrateFromApi() {
+      try {
+        const [vacancies, resumes] = await Promise.all([
+          httpRequest<Array<Record<string, unknown>>>("/vacancies"),
+          httpRequest<Array<Record<string, unknown>>>("/resumes"),
+        ]);
+
+        setData((current) => ({
+          ...current,
+          vacancies: vacancies.map((item) => ({
+            id: String(item.id ?? ""),
+            title: String(item.title ?? ""),
+            companyId: String(item.company_id ?? ""),
+            companyName: String(item.company_name ?? ""),
+            salary: String(item.salary ?? ""),
+            experience: String(item.experience ?? ""),
+            location: String(item.location ?? ""),
+            format: String(item.format ?? ""),
+            employment: String(item.employment ?? ""),
+            status: String(item.status ?? "draft") as Vacancy["status"],
+            publishedAt: item.published_at ? String(item.published_at) : "Не опубликована",
+            note: String(item.note ?? ""),
+            description: String(item.description ?? ""),
+            responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities.map((x) => String(x)) : [],
+            requirements: Array.isArray(item.requirements) ? item.requirements.map((x) => String(x)) : [],
+            perks: Array.isArray(item.perks) ? item.perks.map((x) => String(x)) : [],
+          })),
+          resumes: resumes.map((item) => ({
+            id: String(item.id ?? ""),
+            candidateId: String(item.candidate_id ?? ""),
+            candidateName: String(item.candidate_name ?? ""),
+            role: String(item.role ?? ""),
+            experience: String(item.experience ?? ""),
+            salary: String(item.salary ?? ""),
+            location: String(item.location ?? ""),
+            visibility: String(item.visibility ?? "public"),
+            updatedAt: String(item.updated_at ?? ""),
+            about: String(item.about ?? ""),
+            skills: Array.isArray(item.skills) ? item.skills.map((x) => String(x)) : [],
+            education: String(item.education ?? ""),
+            formatPreference: String(item.format_preference ?? ""),
+          })),
+        }));
+      } catch {
+        // Keep local fallback data if backend is unavailable.
+      }
+    }
+
+    void hydrateFromApi();
+  }, []);
+
+  useEffect(() => {
+    async function hydrateSessionData() {
+      if (!session.accessToken) {
+        return;
+      }
+
+      try {
+        const me = await httpRequest<ApiUser>("/users/me", { accessToken: session.accessToken });
+        const [applications, notifications] = await Promise.all([
+          httpRequest<Array<Record<string, unknown>>>("/applications", { accessToken: session.accessToken }),
+          httpRequest<Array<Record<string, unknown>>>("/notifications", { accessToken: session.accessToken }),
+        ]);
+
+        const nextState: Partial<AppSnapshot> = {
+          applications: applications.map((item) => ({
+            id: String(item.id ?? ""),
+            vacancyId: String(item.vacancy_id ?? ""),
+            candidateId: String(item.candidate_id ?? ""),
+            status: String(item.status ?? ""),
+            updatedAt: String(item.updated_at ?? ""),
+          })),
+          notifications: notifications.map((item) => ({
+            id: String(item.id ?? ""),
+            title: String(item.title ?? ""),
+            description: String(item.description ?? ""),
+            isRead: Boolean(item.is_read),
+          })),
+        };
+
+        if (me.role === "candidate") {
+          const profile = await httpRequest<Record<string, unknown>>("/candidate/profile", {
+            accessToken: session.accessToken,
+          });
+          nextState.candidateProfiles = [toCandidateProfileFromApi(profile)];
+        }
+
+        if (me.role === "employer") {
+          const profile = await httpRequest<Record<string, unknown>>("/employer/profile", {
+            accessToken: session.accessToken,
+          });
+          nextState.employerProfiles = [toEmployerProfileFromApi(profile)];
+        }
+
+        setSession((current) => ({ ...current, userId: me.id }));
+        setData((current) => ({
+          ...current,
+          ...nextState,
+          users: [...current.users.filter((item) => item.id !== me.id), me],
+          candidateProfiles:
+            me.role === "candidate" && nextState.candidateProfiles
+              ? [...current.candidateProfiles.filter((item) => item.userId !== me.id), ...nextState.candidateProfiles]
+              : current.candidateProfiles,
+          employerProfiles:
+            me.role === "employer" && nextState.employerProfiles
+              ? [...current.employerProfiles.filter((item) => item.userId !== me.id), ...nextState.employerProfiles]
+              : current.employerProfiles,
+        }));
+      } catch {
+        setSession({ userId: null, accessToken: null, refreshToken: null });
+      }
+    }
+
+    void hydrateSessionData();
+  }, [session.accessToken]);
+
   const sessionUser = useMemo(
     () => data.users.find((user) => user.id === session.userId) ?? null,
     [data.users, session.userId],
@@ -634,88 +802,75 @@ export function AppProvider({ children }: PropsWithChildren) {
       activeCandidateProfile,
       activeEmployerProfile,
       authReady,
-      async signIn(email) {
-        await wait(650);
-        const user = data.users.find((item) => item.email.toLowerCase() === email.toLowerCase());
-        if (!user) {
-          throw new Error("Пользователь с таким email не найден. Используй учетные записи из текущих mock-данных или зарегистрируй нового пользователя.");
-        }
-        setSession({ userId: user.id });
-      },
-      async register(payload) {
-        await wait(850);
-
-        if (data.users.some((item) => item.email.toLowerCase() === payload.email.toLowerCase())) {
-          throw new Error("Пользователь с таким email уже существует.");
-        }
-
-        const nextUserId = `user-${Date.now()}`;
-        const nextUser: User = {
-          id: nextUserId,
-          fullName: payload.fullName,
-          email: payload.email,
-          role: payload.role,
-          headline: payload.role === "candidate" ? "Новый кандидат" : "Новый работодатель",
-          city: "Москва",
-          status: payload.role === "candidate" ? "Профиль заполняется" : "Компания подключается",
-        };
-
+      async signIn(email, password) {
+        const response = await httpRequest<ApiAuthResponse>("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        setSession({
+          userId: response.user.id,
+          accessToken: response.access_token,
+          refreshToken: response.refresh_token,
+        });
         setData((current) => ({
           ...current,
-          users: [...current.users, nextUser],
-          candidateProfiles:
-            payload.role === "candidate"
-              ? [
-                  ...current.candidateProfiles,
-                  {
-                    userId: nextUserId,
-                    headline: "Специалист",
-                    about: "Новый профиль соискателя. Заполните информацию о себе, чтобы начать получать релевантные вакансии.",
-                    location: "Москва",
-                    preferredFormat: "Удаленно или гибрид",
-                    salaryExpectation: "По договоренности",
-                    experience: "До 1 года",
-                    availability: "Готов обсудить",
-                    skills: ["Communication", "Growth mindset"],
-                    summary: ["Профиль создан и готов к заполнению."],
-                  },
-                ]
-              : current.candidateProfiles,
-          employerProfiles:
-            payload.role === "employer"
-              ? [
-                  ...current.employerProfiles,
-                  {
-                    userId: nextUserId,
-                    companyId: `company-${Date.now()}`,
-                    companyName: payload.companyName?.trim() || "Новая компания",
-                    position: "Hiring Manager",
-                    aboutCompany: "Компания только что подключена к платформе. Заполните профиль, чтобы открыть доступ к публикации вакансий и поиску кандидатов.",
-                    office: "Москва",
-                    hiringFocus: ["Product", "Engineering"],
-                    teamSize: "До 50 сотрудников",
-                    responseRate: "0%",
-                  },
-                ]
-              : current.employerProfiles,
+          users: [...current.users.filter((item) => item.id !== response.user.id), response.user],
         }));
+      },
+      async register(payload) {
+        const response = await httpRequest<ApiAuthResponse>("/auth/register", {
+          method: "POST",
+          body: JSON.stringify({
+            full_name: payload.fullName,
+            email: payload.email,
+            password: payload.password,
+            role: payload.role,
+            company_name: payload.companyName,
+          }),
+        });
 
-        setSession({ userId: nextUserId });
+        setSession({
+          userId: response.user.id,
+          accessToken: response.access_token,
+          refreshToken: response.refresh_token,
+        });
+        setData((current) => ({
+          ...current,
+          users: [...current.users.filter((item) => item.id !== response.user.id), response.user],
+        }));
       },
       async requestPasswordReset(email) {
-        await wait(780);
-        if (!data.users.some((item) => item.email.toLowerCase() === email.toLowerCase())) {
-          throw new Error("Пользователь с таким email не найден.");
-        }
+        await httpRequest<{ success: boolean }>("/auth/forgot-password", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
       },
       signOut() {
-        setSession({ userId: null });
+        if (session.refreshToken) {
+          void httpRequest<{ success: boolean }>("/auth/logout", {
+            method: "POST",
+            body: JSON.stringify({ refresh_token: session.refreshToken }),
+          }).catch(() => undefined);
+        }
+        setSession({ userId: null, accessToken: null, refreshToken: null });
       },
       async updateCandidateProfile(payload) {
-        await wait(620);
         if (!sessionUser || sessionUser.role !== "candidate") {
           throw new Error("Редактирование доступно только соискателю.");
         }
+
+        const updated = await httpRequest<Record<string, unknown>>("/candidate/profile", {
+          method: "PATCH",
+          accessToken: session.accessToken,
+          body: JSON.stringify({
+            headline: payload.headline,
+            about: payload.about,
+            location: payload.location,
+            preferred_format: payload.preferredFormat,
+            salary_expectation: payload.salaryExpectation,
+            availability: payload.availability,
+          }),
+        });
 
         setData((current) => ({
           ...current,
@@ -732,17 +887,29 @@ export function AppProvider({ children }: PropsWithChildren) {
             profile.userId === sessionUser.id
               ? {
                   ...profile,
-                  ...payload,
+                  ...toCandidateProfileFromApi(updated),
                 }
               : profile,
           ),
         }));
       },
       async updateEmployerProfile(payload) {
-        await wait(620);
         if (!sessionUser || sessionUser.role !== "employer") {
           throw new Error("Редактирование доступно только работодателю.");
         }
+
+        const updated = await httpRequest<Record<string, unknown>>("/employer/profile", {
+          method: "PATCH",
+          accessToken: session.accessToken,
+          body: JSON.stringify({
+            company_name: payload.companyName,
+            position: payload.position,
+            about_company: payload.aboutCompany,
+            office: payload.office,
+            team_size: payload.teamSize,
+            response_rate: payload.responseRate,
+          }),
+        });
 
         setData((current) => ({
           ...current,
@@ -759,7 +926,7 @@ export function AppProvider({ children }: PropsWithChildren) {
             profile.userId === sessionUser.id
               ? {
                   ...profile,
-                  ...payload,
+                  ...toEmployerProfileFromApi(updated),
                 }
               : profile,
           ),
@@ -779,7 +946,7 @@ export function AppProvider({ children }: PropsWithChildren) {
         }));
       },
     }),
-    [activeCandidateProfile, activeEmployerProfile, authReady, data, role, sessionUser],
+    [activeCandidateProfile, activeEmployerProfile, authReady, data, role, session, sessionUser],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

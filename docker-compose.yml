@@ -1,26 +1,55 @@
-version: "3.9"
-
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hrsystem_postgres
+    environment:
+      POSTGRES_DB: hr_platform
+      POSTGRES_USER: hr_user
+      POSTGRES_PASSWORD: hr_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hr_user -d hr_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrsystem_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_NAME: HR Platform API
+      DEBUG: "false"
+      SECRET_KEY: dev-secret-key-change-me
+      DATABASE_URL: postgresql+psycopg2://hr_user:hr_password@postgres:5432/hr_platform
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: hrsystem_frontend
+    depends_on:
+      - backend
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - CHOKIDAR_USEPOLLING=true
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
 
-  backend:
-    image: python:3.12-slim
-    container_name: hrsystem_backend_placeholder
-    working_dir: /app
-    command: >
-      sh -c "echo 'Backend placeholder: второй разработчик добавит FastAPI сервис сюда.' && tail -f /dev/null"
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+volumes:
+  postgres_data:

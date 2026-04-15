@@ -1,0 +1,33 @@
+from app.models.entities import (
+    Application,
+    CandidateProfile,
+    Company,
+    EmployerProfile,
+    FavoriteResume,
+    FavoriteVacancy,
+    Notification,
+    NotificationSettings,
+    RefreshToken,
+    Resume,
+    User,
+    UserRole,
+    Vacancy,
+    VacancyStatus,
+)
+
+__all__ = [
+    "Application",
+    "CandidateProfile",
+    "Company",
+    "EmployerProfile",
+    "FavoriteResume",
+    "FavoriteVacancy",
+    "Notification",
+    "NotificationSettings",
+    "RefreshToken",
+    "Resume",
+    "User",
+    "UserRole",
+    "Vacancy",
+    "VacancyStatus",
+]
