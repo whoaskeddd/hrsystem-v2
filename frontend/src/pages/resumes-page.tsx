@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import type { Resume } from "../app/app-context";
 import { useAppContext } from "../app/app-context";
+import { httpRequest } from "../shared/api/http-client";
 import { Button } from "../shared/ui/button";
 import { FilterPanel } from "../shared/ui/filter-panel";
 import { FilterSection } from "../shared/ui/filter-section";
@@ -36,37 +38,90 @@ function ResumesSkeleton() {
 type ResumeSort = "updated_desc" | "updated_asc" | "name_asc" | "role_asc";
 
 export function ResumesPage() {
-  const { data, isResumeFavorite, toggleFavoriteResume } = useAppContext();
+  const { isResumeFavorite, toggleFavoriteResume } = useAppContext();
   const { isLoaded, showSkeleton } = useDelayedLoading({ totalMs: 980, delayMs: 220 });
   const [query, setQuery] = useState("");
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [sortBy, setSortBy] = useState<ResumeSort>("updated_desc");
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadResumes() {
+      const params = new URLSearchParams({
+        page: "1",
+        page_size: "100",
+      });
+
+      if (query.trim()) {
+        params.set("q", query.trim());
+      }
+
+      if (remoteOnly) {
+        params.set("remote", "true");
+      }
+
+      params.set("sort", sortBy === "updated_asc" ? "updated_at" : "-updated_at");
+
+      try {
+        const response = await httpRequest<Array<Record<string, unknown>>>(`/resumes?${params.toString()}`);
+        if (cancelled) {
+          return;
+        }
+
+        const mapped: Resume[] = response.map((item) => ({
+          id: String(item.id ?? ""),
+          candidateId: String(item.candidate_id ?? ""),
+          candidateName: String(item.candidate_name ?? ""),
+          role: String(item.role ?? ""),
+          experience: String(item.experience ?? ""),
+          salary: String(item.salary ?? ""),
+          location: String(item.location ?? ""),
+          visibility: String(item.visibility ?? ""),
+          updatedAt: String(item.updated_at ?? ""),
+          about: String(item.about ?? ""),
+          skills: Array.isArray(item.skills) ? item.skills.map((x) => String(x)) : [],
+          education: String(item.education ?? ""),
+          formatPreference: String(item.format_preference ?? ""),
+        }));
+
+        setResumes(mapped);
+        setError(null);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+
+        setResumes([]);
+        setError(requestError instanceof Error ? requestError.message : "Не удалось загрузить кандидатов.");
+      }
+    }
+
+    void loadResumes();
+    return () => {
+      cancelled = true;
+    };
+  }, [query, remoteOnly, sortBy]);
 
   const candidates = useMemo(() => {
-    const filtered = data.resumes.filter((resume) => {
-      const queryMatch =
-        !query ||
-        resume.candidateName.toLowerCase().includes(query.toLowerCase()) ||
-        resume.role.toLowerCase().includes(query.toLowerCase()) ||
-        resume.skills.join(" ").toLowerCase().includes(query.toLowerCase());
-      const remoteMatch = remoteOnly ? resume.formatPreference.toLowerCase().includes("удал") : true;
-      return queryMatch && remoteMatch;
-    });
+    const filtered = resumes;
 
     return [...filtered].sort((left, right) => {
       switch (sortBy) {
         case "updated_asc":
-          return left.updatedAt.localeCompare(right.updatedAt, "ru");
+          return left.updatedAt.localeCompare(right.updatedAt, "en");
         case "name_asc":
           return left.candidateName.localeCompare(right.candidateName, "ru");
         case "role_asc":
           return left.role.localeCompare(right.role, "ru");
         case "updated_desc":
         default:
-          return right.updatedAt.localeCompare(left.updatedAt, "ru");
+          return right.updatedAt.localeCompare(left.updatedAt, "en");
       }
     });
-  }, [data.resumes, query, remoteOnly, sortBy]);
+  }, [resumes, sortBy]);
 
   return (
     <div className="page-enter space-y-6">
@@ -155,6 +210,11 @@ export function ResumesPage() {
             <ResumesSkeleton />
           ) : (
             <div className={["space-y-4 transition duration-500", isLoaded ? "opacity-100" : "opacity-0"].join(" ")}>
+              {error ? (
+                <div className="rounded-[22px] border border-rose-300/30 bg-rose-500/10 p-6 text-sm text-rose-100">
+                  {error}
+                </div>
+              ) : null}
               {candidates.map((candidate) => (
                 <ListItem
                   key={candidate.id}

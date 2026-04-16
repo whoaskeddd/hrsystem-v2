@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import type { Vacancy } from "../app/app-context";
 import { useAppContext } from "../app/app-context";
+import { httpRequest } from "../shared/api/http-client";
 import { Button } from "../shared/ui/button";
 import { FilterPanel } from "../shared/ui/filter-panel";
 import { FilterSection } from "../shared/ui/filter-section";
@@ -45,23 +47,91 @@ type VacancySort = "newest" | "salary_desc" | "salary_asc" | "title_asc";
 
 export function VacanciesPage() {
   const navigate = useNavigate();
-  const { data, role, isVacancyFavorite, toggleFavoriteVacancy } = useAppContext();
+  const { role, isVacancyFavorite, toggleFavoriteVacancy } = useAppContext();
   const { isLoaded, showSkeleton } = useDelayedLoading({ totalMs: 920, delayMs: 220 });
   const [search, setSearch] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<string>("all");
   const [selectedEmployment, setSelectedEmployment] = useState<string>("all");
   const [sortBy, setSortBy] = useState<VacancySort>("newest");
+  const [vacancies, setVacancies] = useState<Vacancy[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVacancies() {
+      const params = new URLSearchParams({
+        page: "1",
+        page_size: "100",
+      });
+
+      if (search.trim()) {
+        params.set("q", search.trim());
+      }
+
+      if (selectedEmployment !== "all") {
+        params.set("employment", selectedEmployment);
+      }
+
+      if (selectedFormat === "Удаленно") {
+        params.set("remote", "true");
+      }
+
+      if (sortBy === "salary_desc") {
+        params.set("sort", "-salary");
+      } else if (sortBy === "salary_asc") {
+        params.set("sort", "salary");
+      } else {
+        params.set("sort", "-created_at");
+      }
+
+      try {
+        const response = await httpRequest<Array<Record<string, unknown>>>(`/vacancies?${params.toString()}`);
+        if (cancelled) {
+          return;
+        }
+
+        const mapped: Vacancy[] = response.map((item) => ({
+          id: String(item.id ?? ""),
+          title: String(item.title ?? ""),
+          companyId: String(item.company_id ?? ""),
+          companyName: String(item.company_name ?? ""),
+          salary: String(item.salary ?? ""),
+          experience: String(item.experience ?? ""),
+          location: String(item.location ?? ""),
+          format: String(item.format ?? ""),
+          employment: String(item.employment ?? ""),
+          status: (String(item.status ?? "draft") as Vacancy["status"]) ?? "draft",
+          publishedAt: String(item.published_at ?? ""),
+          note: String(item.note ?? ""),
+          description: String(item.description ?? ""),
+          responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities.map((x) => String(x)) : [],
+          requirements: Array.isArray(item.requirements) ? item.requirements.map((x) => String(x)) : [],
+          perks: Array.isArray(item.perks) ? item.perks.map((x) => String(x)) : [],
+        }));
+
+        setVacancies(mapped);
+        setError(null);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+        setVacancies([]);
+        setError(requestError instanceof Error ? requestError.message : "Не удалось загрузить вакансии.");
+      }
+    }
+
+    void loadVacancies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search, selectedEmployment, selectedFormat, sortBy]);
 
   const vacancyCards = useMemo(() => {
-    const filtered = data.vacancies.filter((item) => {
-      const searchMatch =
-        !search ||
-        item.title.toLowerCase().includes(search.toLowerCase()) ||
-        item.companyName.toLowerCase().includes(search.toLowerCase()) ||
-        item.note.toLowerCase().includes(search.toLowerCase());
+    const filtered = vacancies.filter((item) => {
       const formatMatch = selectedFormat === "all" ? true : item.format === selectedFormat;
-      const employmentMatch = selectedEmployment === "all" ? true : item.employment === selectedEmployment;
-      return item.status === "published" && searchMatch && formatMatch && employmentMatch;
+      return item.status === "published" && formatMatch;
     });
 
     return [...filtered].sort((left, right) => {
@@ -74,10 +144,10 @@ export function VacanciesPage() {
           return left.title.localeCompare(right.title, "ru");
         case "newest":
         default:
-          return (right.publishedAt || "").localeCompare(left.publishedAt || "", "ru");
+          return (right.publishedAt || "").localeCompare(left.publishedAt || "", "en");
       }
     });
-  }, [data.vacancies, search, selectedEmployment, selectedFormat, sortBy]);
+  }, [vacancies, selectedFormat, sortBy]);
 
   return (
     <div className="page-enter space-y-6">
@@ -159,6 +229,11 @@ export function VacanciesPage() {
             <VacanciesSkeleton />
           ) : (
             <div className={["space-y-4 transition duration-500", isLoaded ? "opacity-100" : "opacity-0"].join(" ")}>
+              {error ? (
+                <div className="rounded-[22px] border border-rose-300/30 bg-rose-500/10 p-6 text-sm text-rose-100">
+                  {error}
+                </div>
+              ) : null}
               {vacancyCards.map((item) => (
                 <ListItem
                   key={item.id}

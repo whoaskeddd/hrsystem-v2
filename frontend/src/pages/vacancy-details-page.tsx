@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import type { Vacancy } from "../app/app-context";
 import { useAppContext } from "../app/app-context";
+import { httpRequest } from "../shared/api/http-client";
 import { Button } from "../shared/ui/button";
 import { PageTopBar } from "../shared/ui/page-top-bar";
 import { SectionCard } from "../shared/ui/section-card";
@@ -13,18 +15,123 @@ export function VacancyDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { data, role, applyToVacancy, isVacancyFavorite, toggleFavoriteVacancy } = useAppContext();
-  const vacancy = data.vacancies.find((item) => item.id === id);
+  const [vacancy, setVacancy] = useState<Vacancy | null>(null);
+  const [relatedVacancies, setRelatedVacancies] = useState<Vacancy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const alreadyApplied = data.applications.some((item) => item.vacancyId === id);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVacancy() {
+      if (!id) {
+        setLoadError("Не передан идентификатор вакансии.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const vacancyPayload = await httpRequest<Record<string, unknown>>(`/vacancies/${id}`);
+        const currentVacancy: Vacancy = {
+          id: String(vacancyPayload.id ?? ""),
+          title: String(vacancyPayload.title ?? ""),
+          companyId: String(vacancyPayload.company_id ?? ""),
+          companyName: String(vacancyPayload.company_name ?? ""),
+          salary: String(vacancyPayload.salary ?? ""),
+          experience: String(vacancyPayload.experience ?? ""),
+          location: String(vacancyPayload.location ?? ""),
+          format: String(vacancyPayload.format ?? ""),
+          employment: String(vacancyPayload.employment ?? ""),
+          status: (String(vacancyPayload.status ?? "draft") as Vacancy["status"]) ?? "draft",
+          publishedAt: String(vacancyPayload.published_at ?? ""),
+          note: String(vacancyPayload.note ?? ""),
+          description: String(vacancyPayload.description ?? ""),
+          responsibilities: Array.isArray(vacancyPayload.responsibilities)
+            ? vacancyPayload.responsibilities.map((x) => String(x))
+            : [],
+          requirements: Array.isArray(vacancyPayload.requirements) ? vacancyPayload.requirements.map((x) => String(x)) : [],
+          perks: Array.isArray(vacancyPayload.perks) ? vacancyPayload.perks.map((x) => String(x)) : [],
+        };
+
+        const relatedPayload = await httpRequest<Array<Record<string, unknown>>>("/vacancies?page=1&page_size=100");
+        const related = relatedPayload
+          .map((item) => ({
+            id: String(item.id ?? ""),
+            title: String(item.title ?? ""),
+            companyId: String(item.company_id ?? ""),
+            companyName: String(item.company_name ?? ""),
+            salary: String(item.salary ?? ""),
+            experience: String(item.experience ?? ""),
+            location: String(item.location ?? ""),
+            format: String(item.format ?? ""),
+            employment: String(item.employment ?? ""),
+            status: (String(item.status ?? "draft") as Vacancy["status"]) ?? "draft",
+            publishedAt: String(item.published_at ?? ""),
+            note: String(item.note ?? ""),
+            description: String(item.description ?? ""),
+            responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities.map((x) => String(x)) : [],
+            requirements: Array.isArray(item.requirements) ? item.requirements.map((x) => String(x)) : [],
+            perks: Array.isArray(item.perks) ? item.perks.map((x) => String(x)) : [],
+          }))
+          .filter((item) => item.id !== currentVacancy.id);
+
+        if (cancelled) {
+          return;
+        }
+
+        setVacancy(currentVacancy);
+        setRelatedVacancies(related);
+        setLoadError(null);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+
+        setVacancy(null);
+        setRelatedVacancies([]);
+        setLoadError(requestError instanceof Error ? requestError.message : "Не удалось загрузить вакансию.");
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    setLoading(true);
+    void loadVacancy();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const companyVacancies = useMemo(
+    () => relatedVacancies.filter((item) => item.companyId === vacancy?.companyId),
+    [relatedVacancies, vacancy?.companyId],
+  );
+
+  const similarVacancies = useMemo(() => relatedVacancies.slice(0, 3), [relatedVacancies]);
+
+  if (loading) {
+    return (
+      <div className="page-enter space-y-6">
+        <SectionCard title="Загрузка вакансии" eyebrow="Please wait">
+          <p className="text-sm text-secondary">Получаем данные вакансии из API.</p>
+        </SectionCard>
+      </div>
+    );
+  }
 
   if (!vacancy) {
     return (
       <div className="page-enter space-y-6">
         <SectionCard title="Вакансия не найдена" eyebrow="404">
           <p className="text-sm text-secondary">
-            Похоже, карточка была удалена или каталог еще не успел загрузиться.
+            {loadError ?? "Похоже, карточка была удалена или каталог еще не успел загрузиться."}
           </p>
           <div className="mt-4">
             <Link to="/vacancies">
@@ -159,12 +266,10 @@ export function VacancyDetailsPage() {
               </Surface>
               <Surface title="Другие вакансии компании">
                 <div className="space-y-2 text-sm text-secondary">
-                  {data.vacancies
-                    .filter((item) => item.companyId === currentVacancy.companyId && item.id !== currentVacancy.id)
-                    .map((item) => (
-                      <p key={item.id}>{item.title}</p>
-                    ))}
-                  {data.vacancies.filter((item) => item.companyId === currentVacancy.companyId && item.id !== currentVacancy.id).length === 0 ? (
+                  {companyVacancies.map((item) => (
+                    <p key={item.id}>{item.title}</p>
+                  ))}
+                  {companyVacancies.length === 0 ? (
                     <p>Других вакансий пока нет.</p>
                   ) : null}
                 </div>
@@ -174,12 +279,9 @@ export function VacancyDetailsPage() {
 
           <SectionCard title="Похожие вакансии" eyebrow="Каталог">
             <div className="space-y-3">
-              {data.vacancies
-                .filter((item) => item.id !== currentVacancy.id)
-                .slice(0, 3)
-                .map((item) => (
-                  <Surface key={item.id} title={item.title} subtitle={`${item.companyName} • ${item.location} • ${item.salary}`} />
-                ))}
+              {similarVacancies.map((item) => (
+                <Surface key={item.id} title={item.title} subtitle={`${item.companyName} • ${item.location} • ${item.salary}`} />
+              ))}
             </div>
           </SectionCard>
         </div>

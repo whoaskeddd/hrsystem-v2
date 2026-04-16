@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     app_name: str = "HR Platform API"
     api_prefix: str = "/api/v1"
     debug: bool = False
+    enable_seed_data: bool = False
 
     secret_key: str = Field(default="dev-secret-key-change-me")
     algorithm: str = "HS256"

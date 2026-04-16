@@ -26,8 +26,9 @@ app.add_middleware(
 def startup_event() -> None:
     # Local fallback when migrations are not applied yet.
     Base.metadata.create_all(bind=engine)
-    with SessionLocal() as db:
-        seed_if_empty(db)
+    if settings.enable_seed_data:
+        with SessionLocal() as db:
+            seed_if_empty(db)
 
 
 @app.get("/healthz")
