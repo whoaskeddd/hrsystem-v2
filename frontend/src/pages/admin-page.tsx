@@ -6,7 +6,7 @@ import { SidebarNav } from "../shared/ui/sidebar-nav";
 import { Surface } from "../shared/ui/surface";
 import { TabGroup } from "../shared/ui/tab-group";
 
-const adminSections = ["Пользователи", "Компании", "Вакансии", "Резюме", "Жалобы", "Категории", "Логи", "Настройки"];
+const adminSections = ["Пользователи", "Компании", "Вакансии", "Резюме", "Жалобы", "Логи"];
 
 export function AdminPage() {
   const { data } = useAppContext();
@@ -15,20 +15,22 @@ export function AdminPage() {
     <div className="page-enter space-y-6">
       <PageTopBar
         title="Административная панель"
-        subtitle="Рабочая админская поверхность для модерации, контроля контента и системного обзора. Основана на общих данных приложения."
+        subtitle="Панель модерации теперь опирается на backend admin endpoints и реальные отчеты."
         actions={<TabGroup tabs={["Модерация", "Логи", "Настройки"]} activeTab="Модерация" />}
       />
 
       <div className="grid gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
-        <SidebarNav title="Разделы" eyebrow="Админка" items={adminSections} activeItem="Пользователи" />
+        <SidebarNav title="Разделы" eyebrow="Админка" items={adminSections} activeItem="Жалобы" />
 
         <div className="space-y-6">
-          <SectionCard title="Управление пользователями" eyebrow="Модерация">
+          <SectionCard title="Отчеты и жалобы" eyebrow="GET /admin/reports">
             <div className="mb-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_180px]">
               <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-muted">
-                Поиск по пользователям и компаниям...
+                В этом разделе отображаются реальные backend reports.
               </div>
-              <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">Статус: все</div>
+              <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">
+                Жалоб: {data.adminCases.length}
+              </div>
               <Button variant="secondary">Экспорт</Button>
             </div>
 
@@ -45,14 +47,15 @@ export function AdminPage() {
                   </div>
                 </Surface>
               ))}
+              {data.adminCases.length === 0 ? <Surface title="Отчеты отсутствуют" subtitle="Backend не вернул активных кейсов." /> : null}
             </div>
           </SectionCard>
 
-          <SectionCard title="Сводка модерации" eyebrow="Административная сводка">
+          <SectionCard title="Сводка" eyebrow="Админ overview">
             <div className="grid gap-4 xl:grid-cols-3">
               <Surface title="Жалоб в очереди" subtitle={`${data.adminCases.length} активных кейсов`} />
-              <Surface title="Новых компаний" subtitle={`${data.users.filter((user) => user.role === "employer").length} работодателя в системе`} />
-              <Surface title="Системные события" subtitle={`${data.notifications.length} событий в notification center`} />
+              <Surface title="Работодателей" subtitle={`${data.users.filter((user) => user.role === "employer").length} аккаунтов`} />
+              <Surface title="Пользователей" subtitle={`${data.users.length} записей из /admin/users`} />
             </div>
           </SectionCard>
         </div>

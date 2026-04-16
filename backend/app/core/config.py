@@ -16,6 +16,14 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./hrplatform.db"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origin_regex: str = (
+        r"^https?://"
+        r"(localhost|127\.0\.0\.1|0\.0\.0\.0|"
+        r"192\.168\.\d{1,3}\.\d{1,3}|"
+        r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+        r"172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})"
+        r"(:\d+)?$"
+    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 

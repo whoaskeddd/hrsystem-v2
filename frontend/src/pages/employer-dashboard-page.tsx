@@ -12,7 +12,7 @@ import { Surface } from "../shared/ui/surface";
 import { Tag } from "../shared/ui/tag";
 import { Textarea } from "../shared/ui/textarea";
 
-const sidebarItems = ["Обзор", "Профиль компании", "Вакансии", "Отклики", "Сообщения", "Звонки", "Аналитика"];
+const sidebarItems = ["Обзор", "Профиль компании", "Вакансии", "Отклики", "Аналитика"];
 
 export function EmployerDashboardPage() {
   const { activeEmployerProfile, data, sessionUser, updateEmployerProfile } = useAppContext();
@@ -49,7 +49,7 @@ export function EmployerDashboardPage() {
 
     try {
       await updateEmployerProfile(form);
-      setSuccess("Профиль компании обновлен и готов к синхронизации с backend.");
+      setSuccess("Профиль компании обновлен через backend.");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Не удалось сохранить профиль.");
     } finally {
@@ -61,8 +61,13 @@ export function EmployerDashboardPage() {
     <div className="page-enter space-y-6">
       <PageTopBar
         title="Кабинет работодателя"
-        subtitle="Рабочий кабинет компании: hiring metrics, текущие вакансии, воронка откликов и форма редактирования профиля."
-        actions={<div className="flex flex-wrap gap-2"><Tag>{activeEmployerProfile.companyName}</Tag><Tag>{sessionUser.status}</Tag></div>}
+        subtitle="Сводка компании, вакансии и отклики уже собираются из backend API без локальных заглушек."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Tag>{activeEmployerProfile.companyName}</Tag>
+            <Tag>{sessionUser.status}</Tag>
+          </div>
+        }
       />
 
       <div className="grid gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
@@ -70,20 +75,23 @@ export function EmployerDashboardPage() {
 
         <div className="space-y-6">
           <section className="grid gap-4 lg:grid-cols-3">
-            <StatCard label="Активных вакансий" value={String(companyVacancies.length)} meta="Опубликованные карточки компании" />
-            <StatCard label="Откликов в работе" value={String(companyApplications.length)} meta="Текущая воронка найма" />
-            <StatCard label="Response rate" value={activeEmployerProfile.responseRate} meta="Средняя скорость ответа кандидатам" />
+            <StatCard label="Вакансий компании" value={String(companyVacancies.length)} meta="Каталог связан с /vacancies" />
+            <StatCard label="Откликов в работе" value={String(companyApplications.length)} meta="Статусы приходят из /applications" />
+            <StatCard label="Response rate" value={activeEmployerProfile.responseRate} meta="Значение хранится в employer profile" />
           </section>
 
           <SectionCard title="Операционная сводка" eyebrow="Hiring overview">
             <div className="grid gap-4 xl:grid-cols-3">
               <Surface title="Команда" subtitle={`${activeEmployerProfile.teamSize} • офис ${activeEmployerProfile.office}`} />
-              <Surface title="Фокус найма" subtitle={activeEmployerProfile.hiringFocus.join(", ")} />
-              <Surface title="Следующий шаг" subtitle="Подключить backend CRUD вакансий и статусы откликов по контракту." />
+              <Surface title="Фокус найма" subtitle={activeEmployerProfile.hiringFocus.join(", ") || "Пока не заполнен"} />
+              <Surface
+                title="Следующий шаг"
+                subtitle={companyVacancies.length ? "Можно публиковать новые вакансии и переводить отклики по этапам." : "Добавьте первую вакансию в backend."}
+              />
             </div>
           </SectionCard>
 
-          <SectionCard title="Профиль компании" eyebrow="Редактирование">
+          <SectionCard title="Профиль компании" eyebrow="PATCH /employer/profile">
             <form className="grid gap-4" onSubmit={handleSubmit}>
               {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
               {success ? <StatusBanner tone="success">{success}</StatusBanner> : null}
@@ -121,6 +129,15 @@ export function EmployerDashboardPage() {
                 {isSaving ? "Сохраняем..." : "Сохранить изменения"}
               </Button>
             </form>
+          </SectionCard>
+
+          <SectionCard title="Вакансии компании" eyebrow="Live list">
+            <div className="grid gap-4 xl:grid-cols-2">
+              {companyVacancies.map((vacancy) => (
+                <Surface key={vacancy.id} title={vacancy.title} subtitle={`${vacancy.salary} • ${vacancy.location} • ${vacancy.status}`} />
+              ))}
+              {companyVacancies.length === 0 ? <Surface title="Пока пусто" subtitle="После создания вакансии она появится здесь автоматически." /> : null}
+            </div>
           </SectionCard>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { useDelayedLoading } from "../shared/hooks/use-delayed-loading";
 import { Input } from "../shared/ui/input";
 import { ListItem } from "../shared/ui/list-item";
 import { PageTopBar } from "../shared/ui/page-top-bar";
+import { Select } from "../shared/ui/select";
 import { Skeleton } from "../shared/ui/skeleton";
 import { Tag } from "../shared/ui/tag";
 
@@ -32,108 +33,111 @@ function ResumesSkeleton() {
   );
 }
 
+type ResumeSort = "updated_desc" | "updated_asc" | "name_asc" | "role_asc";
+
 export function ResumesPage() {
-  const { data } = useAppContext();
+  const { data, isResumeFavorite, toggleFavoriteResume } = useAppContext();
   const { isLoaded, showSkeleton } = useDelayedLoading({ totalMs: 980, delayMs: 220 });
   const [query, setQuery] = useState("");
   const [remoteOnly, setRemoteOnly] = useState(false);
-  const candidates = useMemo(
-    () =>
-      data.resumes.filter((resume) => {
-        const queryMatch =
-          resume.candidateName.toLowerCase().includes(query.toLowerCase()) ||
-          resume.role.toLowerCase().includes(query.toLowerCase()) ||
-          resume.skills.join(" ").toLowerCase().includes(query.toLowerCase());
-        const remoteMatch = remoteOnly ? resume.formatPreference.toLowerCase().includes("удал") : true;
-        return queryMatch && remoteMatch;
-      }),
-    [data.resumes, query, remoteOnly],
-  );
+  const [sortBy, setSortBy] = useState<ResumeSort>("updated_desc");
+
+  const candidates = useMemo(() => {
+    const filtered = data.resumes.filter((resume) => {
+      const queryMatch =
+        !query ||
+        resume.candidateName.toLowerCase().includes(query.toLowerCase()) ||
+        resume.role.toLowerCase().includes(query.toLowerCase()) ||
+        resume.skills.join(" ").toLowerCase().includes(query.toLowerCase());
+      const remoteMatch = remoteOnly ? resume.formatPreference.toLowerCase().includes("удал") : true;
+      return queryMatch && remoteMatch;
+    });
+
+    return [...filtered].sort((left, right) => {
+      switch (sortBy) {
+        case "updated_asc":
+          return left.updatedAt.localeCompare(right.updatedAt, "ru");
+        case "name_asc":
+          return left.candidateName.localeCompare(right.candidateName, "ru");
+        case "role_asc":
+          return left.role.localeCompare(right.role, "ru");
+        case "updated_desc":
+        default:
+          return right.updatedAt.localeCompare(left.updatedAt, "ru");
+      }
+    });
+  }, [data.resumes, query, remoteOnly, sortBy]);
 
   return (
     <div className="page-enter space-y-6">
       <PageTopBar
-        title="Поиск кандидатов"
-        subtitle="Экран для работодателя и рекрутера: быстрая фильтрация, понятное сканирование профилей и компактные действия по каждому кандидату."
+        title="Кандидаты"
+        subtitle="Подберите специалистов по навыкам, роли и формату работы."
         actions={
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px]">
-            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Навыки, должность, опыт, ключевые слова" className="rounded-full" />
-            <div className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">
-              Сортировка: релевантность
-            </div>
-            <button type="button" onClick={() => setRemoteOnly((current) => !current)} className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary">
-              {remoteOnly ? "Удаленка: только да" : "Удаленка: все"}
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Навыки, должность, имя"
+              className="rounded-full"
+            />
+            <Select value={sortBy} onChange={(event) => setSortBy(event.target.value as ResumeSort)}>
+              <option value="updated_desc">Сначала новые</option>
+              <option value="updated_asc">Сначала старые</option>
+              <option value="name_asc">По имени</option>
+              <option value="role_asc">По роли</option>
+            </Select>
+            <button
+              type="button"
+              onClick={() => setRemoteOnly((current) => !current)}
+              className="rounded-full border border-white/8 bg-soft/70 px-4 py-3 text-sm text-secondary"
+            >
+              {remoteOnly ? "Только удаленка" : "Все форматы"}
             </button>
           </div>
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="xl:sticky xl:top-28 xl:h-fit">
-          <FilterPanel
-            title="Фильтры кандидатов"
-            eyebrow="Левая панель поиска"
-            hint="Быстрые теги навыков, расширенный поиск и сохраненные подборки можно связать со store на следующем шаге."
-            footer={
-              <div className="flex flex-col gap-3">
-                <Button fullWidth>Показать {candidates.length} кандидатов</Button>
-                <Button variant="secondary" fullWidth>
-                  Сохранить поиск
-                </Button>
-              </div>
-            }
-          >
-            <FilterSection title="Опыт">
-              <div className="space-y-2 text-sm text-secondary">
-                {["Не имеет значения", "1-3 года", "3-6 лет", "Более 6 лет"].map((item, index) => (
-                  <label key={item} className="flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-white/5">
-                    <span className={["h-4 w-4 rounded-[5px] border", index === 2 ? "border-gold bg-gold/80" : "border-white/20"].join(" ")} />
-                    <span>{item}</span>
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-
-            <FilterSection title="Зарплатные ожидания">
-              <div className="space-y-2 text-sm text-secondary">
-                {["До 150 000 ₽", "150 000-220 000 ₽", "220 000-300 000 ₽", "Выше 300 000 ₽"].map((item, index) => (
-                  <label key={item} className="flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-white/5">
-                    <span className={["h-4 w-4 rounded-full border", index === 1 ? "border-gold bg-gold/80" : "border-white/20"].join(" ")} />
-                    <span>{item}</span>
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-
-            <FilterSection title="Локация и удаленка">
-              <div className="space-y-2 text-sm text-secondary">
-                {["Москва", "Санкт-Петербург", "Удаленно", "Готов к релокации"].map((item, index) => (
-                  <label key={item} className="flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-white/5">
-                    <span className={["h-4 w-4 rounded-[5px] border", index === 2 ? "border-gold bg-gold/80" : "border-white/20"].join(" ")} />
-                    <span>{item}</span>
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-
-            <FilterSection title="Образование">
-              <div className="space-y-2 text-sm text-secondary">
-                {["Высшее", "Среднее специальное", "Курсы и буткемпы"].map((item) => (
-                  <label key={item} className="flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-white/5">
-                    <span className="h-4 w-4 rounded-[5px] border border-white/20" />
-                    <span>{item}</span>
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-
-            <FilterSection title="Навыки" actionLabel="Теги">
+          <FilterPanel title="Фильтры кандидатов" eyebrow="Подбор" hint="Используйте поиск и фильтры, чтобы быстрее найти подходящего специалиста.">
+            <FilterSection title="Популярные навыки" actionLabel="Теги">
               <div className="flex flex-wrap gap-2">
-                <Tag>React</Tag>
-                <Tag>TypeScript</Tag>
-                <Tag>Figma</Tag>
-                <Tag>HRTech</Tag>
-                <Tag>Аналитика</Tag>
+                {["React", "TypeScript", "Python", "Figma"].map((skill) => (
+                  <button
+                    key={skill}
+                    type="button"
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-secondary transition hover:border-gold/40 hover:bg-gold/10 hover:text-gold-soft"
+                    onClick={() => setQuery(skill)}
+                  >
+                    {skill}
+                  </button>
+                ))}
+              </div>
+            </FilterSection>
+
+            <FilterSection title="Формат работы">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRemoteOnly(false)}
+                  className={[
+                    "rounded-full border px-3 py-2 text-xs",
+                    !remoteOnly ? "border-gold/40 bg-gold/10 text-gold-soft" : "border-white/10 bg-white/5 text-secondary",
+                  ].join(" ")}
+                >
+                  Все
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRemoteOnly(true)}
+                  className={[
+                    "rounded-full border px-3 py-2 text-xs",
+                    remoteOnly ? "border-gold/40 bg-gold/10 text-gold-soft" : "border-white/10 bg-white/5 text-secondary",
+                  ].join(" ")}
+                >
+                  Удаленно
+                </button>
               </div>
             </FilterSection>
           </FilterPanel>
@@ -142,10 +146,8 @@ export function ResumesPage() {
         <section className="min-w-0 space-y-5">
           <div className="rounded-[22px] border border-white/8 bg-elevated/70 p-5">
             <div className="flex flex-wrap gap-2">
-              <Tag>React</Tag>
-              <Tag>Москва</Tag>
-              <Tag>3-6 лет</Tag>
-              <Tag>Высшее образование</Tag>
+              <Tag>{candidates.length} результатов</Tag>
+              <Tag>{remoteOnly ? "Только удаленка" : "Все форматы"}</Tag>
             </div>
           </div>
 
@@ -153,12 +155,11 @@ export function ResumesPage() {
             <ResumesSkeleton />
           ) : (
             <div className={["space-y-4 transition duration-500", isLoaded ? "opacity-100" : "opacity-0"].join(" ")}>
-              {candidates.map((candidate, index) => (
+              {candidates.map((candidate) => (
                 <ListItem
                   key={candidate.id}
                   title={candidate.candidateName}
                   subtitle={`${candidate.role} • ${candidate.experience} • ${candidate.location}`}
-                  meta={index === 0 ? "лучшее совпадение" : undefined}
                   action={
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="flex flex-wrap gap-2">
@@ -167,16 +168,16 @@ export function ResumesPage() {
                         ))}
                         <Tag>{candidate.salary}</Tag>
                       </div>
-                      <Button>Просмотреть</Button>
-                      <Button variant="secondary">Пригласить</Button>
+                      <Button variant="secondary" onClick={() => void toggleFavoriteResume(candidate.id)}>
+                        {isResumeFavorite(candidate.id) ? "В избранном" : "Сохранить"}
+                      </Button>
                     </div>
                   }
-                  accent={index === 0}
                 />
               ))}
               {candidates.length === 0 ? (
                 <div className="rounded-[22px] border border-white/8 bg-soft/60 p-6 text-sm text-secondary">
-                  В базе нет кандидатов под текущую комбинацию фильтров.
+                  По текущим параметрам подходящих кандидатов не найдено.
                 </div>
               ) : null}
             </div>

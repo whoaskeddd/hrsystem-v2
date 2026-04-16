@@ -13,10 +13,10 @@ import { TabGroup } from "../shared/ui/tab-group";
 import { Tag } from "../shared/ui/tag";
 import { Textarea } from "../shared/ui/textarea";
 
-const sidebarItems = ["Профиль", "Резюме", "Отклики", "Избранное", "Подписки", "Чаты", "Звонки", "Уведомления", "Настройки"];
+const sidebarItems = ["Профиль", "Резюме", "Отклики", "Избранное", "Уведомления"];
 
 export function CandidateProfilePage() {
-  const { activeCandidateProfile, data, sessionUser, updateCandidateProfile } = useAppContext();
+  const { activeCandidateProfile, data, sessionUser, updateCandidateProfile, isVacancyFavorite } = useAppContext();
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +37,10 @@ export function CandidateProfilePage() {
     () => data.applications.filter((application) => application.candidateId === sessionUser?.id),
     [data.applications, sessionUser?.id],
   );
+  const favoriteVacancies = useMemo(
+    () => data.vacancies.filter((vacancy) => isVacancyFavorite(vacancy.id)),
+    [data.vacancies, isVacancyFavorite],
+  );
 
   if (!activeCandidateProfile || !sessionUser) {
     return null;
@@ -50,7 +54,7 @@ export function CandidateProfilePage() {
 
     try {
       await updateCandidateProfile(form);
-      setSuccess("Профиль сохранен. Страница готова к замене mock-state на backend profile endpoint.");
+      setSuccess("Профиль сохранен и синхронизирован с backend.");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Не удалось сохранить профиль.");
     } finally {
@@ -62,21 +66,25 @@ export function CandidateProfilePage() {
     <div className="page-enter space-y-6">
       <PageTopBar
         title="Личный кабинет соискателя"
-        subtitle="Полноценный кабинет с профилем, резюме, откликами и уведомлениями. Состояния формы готовы к backend-интеграции."
+        subtitle="Профиль, резюме, отклики и уведомления уже работают поверх реальных backend-данных."
         actions={<TabGroup tabs={["Профиль", "Резюме", "Отклики"]} activeTab="Профиль" />}
       />
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <StatCard label="Активных резюме" value={String(currentResumes.length)} meta="Данные берутся из общего store" />
-        <StatCard label="Откликов в работе" value={String(currentApplications.length)} meta="Статусы синхронизированы с vacancy flow" />
-        <StatCard label="Новых уведомлений" value={String(data.notifications.filter((item) => !item.isRead).length)} meta="Системные и пользовательские события" />
+        <StatCard label="Активных резюме" value={String(currentResumes.length)} meta="Список приходит из /resumes" />
+        <StatCard label="Откликов" value={String(currentApplications.length)} meta="История строится по /applications" />
+        <StatCard
+          label="Новых уведомлений"
+          value={String(data.notifications.filter((item) => !item.isRead).length)}
+          meta="Центр событий на /notifications"
+        />
       </section>
 
       <div className="grid gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
-        <SidebarNav title="Навигация" eyebrow="Личный кабинет" items={sidebarItems} activeItem="Профиль" />
+        <SidebarNav title="Навигация" eyebrow="Кабинет" items={sidebarItems} activeItem="Профиль" />
 
         <div className="space-y-6">
-          <SectionCard title="Анна Смирнова" eyebrow="Профиль кандидата">
+          <SectionCard title={sessionUser.fullName} eyebrow="Профиль кандидата">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
@@ -85,9 +93,7 @@ export function CandidateProfilePage() {
                   <Tag>{activeCandidateProfile.location}</Tag>
                   <Tag>{sessionUser.status}</Tag>
                 </div>
-                <p className="max-w-4xl text-sm leading-7 text-secondary">
-                  {activeCandidateProfile.about}
-                </p>
+                <p className="max-w-4xl text-sm leading-7 text-secondary">{activeCandidateProfile.about}</p>
                 <div className="flex flex-wrap gap-2">
                   {activeCandidateProfile.skills.map((skill) => (
                     <Tag key={skill}>{skill}</Tag>
@@ -114,7 +120,7 @@ export function CandidateProfilePage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Редактирование профиля" eyebrow="Profile form">
+          <SectionCard title="Редактирование профиля" eyebrow="PATCH /candidate/profile">
             <form className="grid gap-4" onSubmit={handleSubmit}>
               {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
               {success ? <StatusBanner tone="success">{success}</StatusBanner> : null}
@@ -130,11 +136,17 @@ export function CandidateProfilePage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm text-secondary">Формат работы</label>
-                  <Input value={form.preferredFormat} onChange={(event) => setForm((current) => ({ ...current, preferredFormat: event.target.value }))} />
+                  <Input
+                    value={form.preferredFormat}
+                    onChange={(event) => setForm((current) => ({ ...current, preferredFormat: event.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm text-secondary">Ожидания по доходу</label>
-                  <Input value={form.salaryExpectation} onChange={(event) => setForm((current) => ({ ...current, salaryExpectation: event.target.value }))} />
+                  <Input
+                    value={form.salaryExpectation}
+                    onChange={(event) => setForm((current) => ({ ...current, salaryExpectation: event.target.value }))}
+                  />
                 </div>
               </div>
 
@@ -154,16 +166,13 @@ export function CandidateProfilePage() {
             </form>
           </SectionCard>
 
-          <SectionCard title="Мои резюме" eyebrow="Карточки резюме">
+          <SectionCard title="Мои резюме" eyebrow="Backend catalog">
             <div className="grid gap-4 xl:grid-cols-2">
               {currentResumes.map((resume) => (
                 <article key={resume.id} className="rounded-[22px] border border-white/8 bg-soft/60 p-5 transition hover:border-gold/20">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-display text-lg font-semibold text-primary">{resume.role}</h3>
-                      <p className="mt-2 text-sm text-secondary">{resume.updatedAt}</p>
-                    </div>
-                    <span className="text-gold-soft">★</span>
+                  <div>
+                    <h3 className="font-display text-lg font-semibold text-primary">{resume.role}</h3>
+                    <p className="mt-2 text-sm text-secondary">{resume.updatedAt || "Дата обновления появится после следующего изменения"}</p>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Tag>{resume.experience}</Tag>
@@ -176,11 +185,17 @@ export function CandidateProfilePage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Отклики и сохраненные поиски" eyebrow="Рабочие данные">
+          <SectionCard title="Отклики и избранное" eyebrow="Рабочие данные">
             <div className="grid gap-4 xl:grid-cols-3">
-              <Surface title="Текущие отклики" subtitle={currentApplications.map((item) => item.status).join(" • ")} />
-              <Surface title="Сохраненные поиски" subtitle={data.savedSearches.map((item) => item.title).join(" • ")} />
-              <Surface title="Дальше для backend" subtitle="Подключить profile endpoint, CRUD резюме и отдельный application history API." />
+              <Surface
+                title="Текущие отклики"
+                subtitle={currentApplications.length ? currentApplications.map((item) => item.status).join(" • ") : "Пока нет активных откликов"}
+              />
+              <Surface
+                title="Избранные вакансии"
+                subtitle={favoriteVacancies.length ? favoriteVacancies.map((item) => item.title).join(" • ") : "Избранное пока пусто"}
+              />
+              <Surface title="Профиль" subtitle="Все изменения сразу уходят в backend и не зависят от локальных моков." />
             </div>
             <div className="mt-4 grid gap-4 xl:grid-cols-3">
               {activeCandidateProfile.summary.map((item) => (

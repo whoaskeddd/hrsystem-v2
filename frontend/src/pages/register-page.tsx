@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { getDashboardPath, useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { Input } from "../shared/ui/input";
-import { PageTopBar } from "../shared/ui/page-top-bar";
-import { SectionCard } from "../shared/ui/section-card";
 import { Select } from "../shared/ui/select";
 import { StatusBanner } from "../shared/ui/status-banner";
 
@@ -36,14 +34,18 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="page-enter space-y-6">
-      <PageTopBar
-        title="Создать аккаунт"
-        subtitle="Регистрация уже разделяет роли соискателя и работодателя и готова к подключению backend endpoint без изменения UX."
-      />
+    <div className="relative min-h-[calc(100vh-160px)]">
+      <div className="fixed inset-0 z-10 bg-black/35 backdrop-blur-md" />
+      <div className="relative z-20 flex min-h-[calc(100vh-160px)] items-center justify-center py-10">
+        <div className="w-full max-w-xl rounded-[30px] border border-white/10 bg-base/88 p-8 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="mb-8 text-center">
+            <p className="text-sm uppercase tracking-[0.22em] text-gold-soft/80">Регистрация</p>
+            <h1 className="mt-3 font-display text-4xl font-semibold text-primary">Создайте аккаунт</h1>
+            <p className="mt-3 text-sm leading-6 text-secondary">
+              Выберите роль и заполните данные, чтобы сразу перейти в свое рабочее пространство.
+            </p>
+          </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,540px)_minmax(0,1fr)]">
-        <SectionCard title="Регистрация" eyebrow="New account" className="gold-glow-soft">
           <form className="grid gap-4" onSubmit={handleSubmit}>
             {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
 
@@ -77,7 +79,7 @@ export function RegisterPage() {
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "Создаем аккаунт..." : "Создать аккаунт"}
               </Button>
@@ -85,18 +87,15 @@ export function RegisterPage() {
                 Уже есть аккаунт
               </Button>
             </div>
-          </form>
-        </SectionCard>
 
-        <SectionCard title="После регистрации" eyebrow="Onboarding">
-          <div className="space-y-4 text-sm leading-7 text-secondary">
-            <p>Соискатель попадает в свой кабинет, где может редактировать профиль, работать с резюме и отслеживать отклики.</p>
-            <p>Работодатель попадает в кабинет компании с hiring metrics, активными вакансиями и формой профиля команды.</p>
-            <StatusBanner tone="info">
-              Protected routes и ролевые переходы уже работают, поэтому backend можно подключать поэтапно.
-            </StatusBanner>
-          </div>
-        </SectionCard>
+            <div className="border-t border-white/8 pt-4 text-sm text-secondary">
+              Уже зарегистрированы?{" "}
+              <Link to="/auth/login" className="text-gold-soft transition hover:text-gold">
+                Перейти ко входу
+              </Link>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
