@@ -152,6 +152,16 @@ type EmployerProfileForm = Pick<
   "companyName" | "position" | "aboutCompany" | "office" | "teamSize" | "responseRate"
 >;
 
+type ResumeCreatePayload = Pick<
+  Resume,
+  "role" | "experience" | "salary" | "location" | "visibility" | "about" | "skills" | "education" | "formatPreference"
+>;
+
+type VacancyCreatePayload = Pick<
+  Vacancy,
+  "title" | "salary" | "experience" | "location" | "format" | "employment" | "note" | "description" | "responsibilities" | "requirements" | "perks"
+>;
+
 type AppSnapshot = {
   users: User[];
   candidateProfiles: CandidateProfile[];
@@ -187,6 +197,8 @@ type AppContextValue = {
   refreshData: () => Promise<void>;
   updateCandidateProfile: (payload: CandidateProfileForm) => Promise<void>;
   updateEmployerProfile: (payload: EmployerProfileForm) => Promise<void>;
+  createResume: (payload: ResumeCreatePayload) => Promise<void>;
+  createVacancy: (payload: VacancyCreatePayload) => Promise<void>;
   applyToVacancy: (vacancyId: string, coverLetter?: string) => Promise<void>;
   toggleFavoriteVacancy: (vacancyId: string) => Promise<void>;
   toggleFavoriteResume: (resumeId: string) => Promise<void>;
@@ -709,6 +721,82 @@ export function AppProvider({ children }: PropsWithChildren) {
               : user,
           ),
           employerProfiles: [toEmployerProfile(updated)],
+        }));
+      },
+      async createResume(payload) {
+        if (!session.accessToken || role !== "candidate") {
+          throw new Error("Only candidate accounts can create resumes.");
+        }
+
+        await httpRequest<Record<string, unknown>>("/resumes", {
+          method: "POST",
+          accessToken: session.accessToken,
+          body: JSON.stringify({
+            role: payload.role,
+            experience: payload.experience,
+            salary: payload.salary,
+            location: payload.location,
+            visibility: payload.visibility,
+            about: payload.about,
+            skills: payload.skills,
+            education: payload.education,
+            format_preference: payload.formatPreference,
+          }),
+        });
+
+        const resumesResponse = await httpRequest<Array<Record<string, unknown>>>("/resumes");
+        setData((current) => ({
+          ...current,
+          resumes: resumesResponse.map(toResume),
+        }));
+      },
+      async createVacancy(payload) {
+        if (!session.accessToken || role !== "employer") {
+          throw new Error("Only employer accounts can create vacancies.");
+        }
+
+        let companyId = activeEmployerProfile?.companyId;
+        if (!companyId) {
+          const createdCompany = await httpRequest<Record<string, unknown>>("/companies", {
+            method: "POST",
+            accessToken: session.accessToken,
+            body: JSON.stringify({
+              name: activeEmployerProfile?.companyName || "Новая компания",
+              description: activeEmployerProfile?.aboutCompany || "",
+              office: activeEmployerProfile?.office || "",
+            }),
+          });
+          companyId = asString(createdCompany.id);
+        }
+
+        await httpRequest<Record<string, unknown>>("/vacancies", {
+          method: "POST",
+          accessToken: session.accessToken,
+          body: JSON.stringify({
+            title: payload.title,
+            company_id: companyId,
+            salary: payload.salary,
+            experience: payload.experience,
+            location: payload.location,
+            format: payload.format,
+            employment: payload.employment,
+            note: payload.note,
+            description: payload.description,
+            responsibilities: payload.responsibilities,
+            requirements: payload.requirements,
+            perks: payload.perks,
+          }),
+        });
+
+        const [vacanciesResponse, employerProfileResponse] = await Promise.all([
+          httpRequest<Array<Record<string, unknown>>>("/vacancies"),
+          httpRequest<Record<string, unknown>>("/employer/profile", { accessToken: session.accessToken }),
+        ]);
+
+        setData((current) => ({
+          ...current,
+          vacancies: vacanciesResponse.map(toVacancy),
+          employerProfiles: [toEmployerProfile(employerProfileResponse)],
         }));
       },
       async applyToVacancy(vacancyId, coverLetter = "") {

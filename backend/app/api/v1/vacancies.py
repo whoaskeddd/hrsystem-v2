@@ -63,11 +63,13 @@ def create_vacancy(payload: VacancyCreate, db: Session = Depends(get_db), curren
         location=payload.location,
         format=payload.format,
         employment=payload.employment,
+        status=VacancyStatus.published,
         note=payload.note,
         description=payload.description,
         responsibilities=payload.responsibilities,
         requirements=payload.requirements,
         perks=payload.perks,
+        published_at=datetime.now(timezone.utc),
     )
     db.add(vacancy)
     db.commit()

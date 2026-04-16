@@ -53,17 +53,6 @@ http://<current-browser-host>:8000/api/v1
 
 Special case: if browser is opened on a service address like `198.18.x.x` or `198.19.x.x`, frontend falls back to `http://localhost:8000/api/v1`.
 
-### 3. Demo Accounts
-
-- `anna@hrplatform.dev`
-- `igor@aurumlabs.dev`
-- `admin@hrplatform.dev`
-
-Password for all demo accounts:
-
-```text
-demo-password
-```
 
 Платформа для поиска работы и подбора персонала в стиле hh.ru, с backend на FastAPI и frontend на React + Tailwind CSS.
 

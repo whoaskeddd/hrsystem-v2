@@ -14,12 +14,23 @@ import { Tag } from "../shared/ui/tag";
 import { Textarea } from "../shared/ui/textarea";
 
 const sidebarItems = ["Профиль", "Резюме", "Отклики", "Избранное", "Уведомления"];
+const sectionIdByItem: Record<string, string> = {
+  Профиль: "candidate-profile",
+  Резюме: "candidate-resumes",
+  Отклики: "candidate-applications",
+  Избранное: "candidate-applications",
+  Уведомления: "candidate-applications",
+};
 
 export function CandidateProfilePage() {
-  const { activeCandidateProfile, data, sessionUser, updateCandidateProfile, isVacancyFavorite } = useAppContext();
+  const { activeCandidateProfile, data, sessionUser, updateCandidateProfile, createResume, isVacancyFavorite } = useAppContext();
   const [isSaving, setIsSaving] = useState(false);
+  const [activeSidebarItem, setActiveSidebarItem] = useState("Профиль");
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resumeSuccess, setResumeSuccess] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [isCreatingResume, setIsCreatingResume] = useState(false);
   const [form, setForm] = useState(() => ({
     headline: activeCandidateProfile?.headline ?? "",
     about: activeCandidateProfile?.about ?? "",
@@ -27,6 +38,17 @@ export function CandidateProfilePage() {
     preferredFormat: activeCandidateProfile?.preferredFormat ?? "",
     salaryExpectation: activeCandidateProfile?.salaryExpectation ?? "",
     availability: activeCandidateProfile?.availability ?? "",
+  }));
+  const [resumeForm, setResumeForm] = useState(() => ({
+    role: "",
+    experience: "",
+    salary: "",
+    location: "",
+    visibility: "public",
+    about: "",
+    skillsRaw: "",
+    education: "",
+    formatPreference: "",
   }));
 
   const currentResumes = useMemo(
@@ -62,6 +84,55 @@ export function CandidateProfilePage() {
     }
   }
 
+  async function handleCreateResume(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsCreatingResume(true);
+    setResumeError(null);
+    setResumeSuccess(null);
+
+    try {
+      await createResume({
+        role: resumeForm.role,
+        experience: resumeForm.experience,
+        salary: resumeForm.salary,
+        location: resumeForm.location,
+        visibility: resumeForm.visibility,
+        about: resumeForm.about,
+        skills: resumeForm.skillsRaw
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+        education: resumeForm.education,
+        formatPreference: resumeForm.formatPreference,
+      });
+      setResumeSuccess("Резюме создано.");
+      setResumeForm({
+        role: "",
+        experience: "",
+        salary: "",
+        location: "",
+        visibility: "public",
+        about: "",
+        skillsRaw: "",
+        education: "",
+        formatPreference: "",
+      });
+    } catch (submissionError) {
+      setResumeError(submissionError instanceof Error ? submissionError.message : "Не удалось создать резюме.");
+    } finally {
+      setIsCreatingResume(false);
+    }
+  }
+
+  function handleSidebarItemClick(item: string) {
+    setActiveSidebarItem(item);
+    const sectionId = sectionIdByItem[item];
+    if (!sectionId) {
+      return;
+    }
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <div className="page-enter space-y-6">
       <PageTopBar
@@ -81,10 +152,17 @@ export function CandidateProfilePage() {
       </section>
 
       <div className="grid gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
-        <SidebarNav title="Навигация" eyebrow="Кабинет" items={sidebarItems} activeItem="Профиль" />
+        <SidebarNav
+          title="Навигация"
+          eyebrow="Кабинет"
+          items={sidebarItems}
+          activeItem={activeSidebarItem}
+          onItemClick={handleSidebarItemClick}
+        />
 
         <div className="space-y-6">
           <SectionCard title={sessionUser.fullName} eyebrow="Профиль кандидата">
+            <div id="candidate-profile" className="relative -top-24" />
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
@@ -167,6 +245,25 @@ export function CandidateProfilePage() {
           </SectionCard>
 
           <SectionCard title="Мои резюме" eyebrow="Backend catalog">
+            <div id="candidate-resumes" className="relative -top-24" />
+            <form className="mb-6 grid gap-4 rounded-[20px] border border-white/10 bg-soft/60 p-4" onSubmit={handleCreateResume}>
+              {resumeError ? <StatusBanner tone="error">{resumeError}</StatusBanner> : null}
+              {resumeSuccess ? <StatusBanner tone="success">{resumeSuccess}</StatusBanner> : null}
+              <div className="grid gap-4 xl:grid-cols-2">
+                <Input placeholder="Роль в резюме" value={resumeForm.role} onChange={(event) => setResumeForm((current) => ({ ...current, role: event.target.value }))} required />
+                <Input placeholder="Опыт" value={resumeForm.experience} onChange={(event) => setResumeForm((current) => ({ ...current, experience: event.target.value }))} />
+                <Input placeholder="Ожидания по зарплате" value={resumeForm.salary} onChange={(event) => setResumeForm((current) => ({ ...current, salary: event.target.value }))} />
+                <Input placeholder="Локация" value={resumeForm.location} onChange={(event) => setResumeForm((current) => ({ ...current, location: event.target.value }))} />
+                <Input placeholder="Видимость (public/private/link)" value={resumeForm.visibility} onChange={(event) => setResumeForm((current) => ({ ...current, visibility: event.target.value }))} />
+                <Input placeholder="Предпочтительный формат" value={resumeForm.formatPreference} onChange={(event) => setResumeForm((current) => ({ ...current, formatPreference: event.target.value }))} />
+              </div>
+              <Input placeholder="Навыки через запятую" value={resumeForm.skillsRaw} onChange={(event) => setResumeForm((current) => ({ ...current, skillsRaw: event.target.value }))} />
+              <Input placeholder="Образование" value={resumeForm.education} onChange={(event) => setResumeForm((current) => ({ ...current, education: event.target.value }))} />
+              <Textarea placeholder="О себе" value={resumeForm.about} onChange={(event) => setResumeForm((current) => ({ ...current, about: event.target.value }))} />
+              <Button type="submit" className="w-fit" disabled={isCreatingResume}>
+                {isCreatingResume ? "Создаем..." : "Создать резюме"}
+              </Button>
+            </form>
             <div className="grid gap-4 xl:grid-cols-2">
               {currentResumes.map((resume) => (
                 <article key={resume.id} className="rounded-[22px] border border-white/8 bg-soft/60 p-5 transition hover:border-gold/20">
@@ -186,6 +283,7 @@ export function CandidateProfilePage() {
           </SectionCard>
 
           <SectionCard title="Отклики и избранное" eyebrow="Рабочие данные">
+            <div id="candidate-applications" className="relative -top-24" />
             <div className="grid gap-4 xl:grid-cols-3">
               <Surface
                 title="Текущие отклики"
