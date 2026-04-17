@@ -10,6 +10,7 @@ import {
 import { httpRequest } from "../shared/api/http-client";
 
 export type UserRole = "guest" | "candidate" | "employer" | "admin";
+export type ThemeMode = "dark" | "light";
 
 export type User = {
   id: string;
@@ -106,31 +107,39 @@ export type AdminCase = {
 
 export type Message = {
   id: string;
-  sender: "candidate" | "employer" | "system";
-  author: string;
-  text: string;
+  chatId: string;
+  senderId: string;
+  body: string;
+  status: string;
   sentAt: string;
+  readAt: string;
 };
 
 export type Chat = {
   id: string;
-  title: string;
-  subtitle: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
   vacancyId: string;
+  applicationId: string;
+  participantIds: string[];
+  participantNames: Record<string, string>;
   unreadCount: number;
+  lastMessageText: string;
   lastMessageAt: string;
-  nextStep: string;
-  messages: Message[];
 };
 
 export type CallRecord = {
   id: string;
-  participant: string;
-  role: string;
+  chatId: string;
+  initiatedBy: string;
+  participantId: string;
   status: string;
-  duration: string;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
   summary: string;
-  timeline: string[];
+  transcript: string;
   context: string;
 };
 
@@ -187,6 +196,7 @@ type AppContextValue = {
   data: AppSnapshot;
   sessionUser: User | null;
   role: UserRole;
+  theme: ThemeMode;
   activeCandidateProfile: CandidateProfile | null;
   activeEmployerProfile: EmployerProfile | null;
   authReady: boolean;
@@ -194,6 +204,7 @@ type AppContextValue = {
   register: (payload: RegisterPayload) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   signOut: () => void;
+  toggleTheme: () => void;
   refreshData: () => Promise<void>;
   updateCandidateProfile: (payload: CandidateProfileForm) => Promise<void>;
   updateEmployerProfile: (payload: EmployerProfileForm) => Promise<void>;
@@ -203,6 +214,11 @@ type AppContextValue = {
   toggleFavoriteVacancy: (vacancyId: string) => Promise<void>;
   toggleFavoriteResume: (resumeId: string) => Promise<void>;
   toggleNotificationRead: (notificationId: string) => Promise<void>;
+  loadChatMessages: (chatId: string) => Promise<Message[]>;
+  sendChatMessage: (chatId: string, body: string) => Promise<void>;
+  markChatRead: (chatId: string) => Promise<void>;
+  startCall: (participantId: string, chatId?: string, context?: string) => Promise<void>;
+  updateCallStatus: (callId: string, status: string, summary?: string, transcript?: string) => Promise<void>;
   isVacancyFavorite: (vacancyId: string) => boolean;
   isResumeFavorite: (resumeId: string) => boolean;
 };
@@ -215,6 +231,7 @@ type ApiAuthResponse = {
 };
 
 const STORAGE_KEY = "hr-platform-session-v2";
+const THEME_KEY = "hr-platform-theme-v1";
 
 const emptyData: AppSnapshot = {
   users: [],
@@ -352,6 +369,52 @@ function toAdminCase(payload: Record<string, unknown>): AdminCase {
   };
 }
 
+function toChat(payload: Record<string, unknown>): Chat {
+  const namesRaw = payload.participant_names;
+  const names = namesRaw && typeof namesRaw === "object" ? (namesRaw as Record<string, unknown>) : {};
+  return {
+    id: asString(payload.id),
+    createdBy: asString(payload.created_by),
+    createdAt: asString(payload.created_at),
+    updatedAt: asString(payload.updated_at),
+    vacancyId: asString(payload.vacancy_id),
+    applicationId: asString(payload.application_id),
+    participantIds: asStringArray(payload.participant_ids),
+    participantNames: Object.fromEntries(Object.entries(names).map(([key, value]) => [key, String(value)])),
+    unreadCount: Number(payload.unread_count ?? 0),
+    lastMessageText: asString(payload.last_message_text),
+    lastMessageAt: asString(payload.last_message_at),
+  };
+}
+
+function toMessage(payload: Record<string, unknown>): Message {
+  return {
+    id: asString(payload.id),
+    chatId: asString(payload.chat_id),
+    senderId: asString(payload.sender_id),
+    body: asString(payload.body),
+    status: asString(payload.status),
+    sentAt: asString(payload.sent_at),
+    readAt: asString(payload.read_at),
+  };
+}
+
+function toCall(payload: Record<string, unknown>): CallRecord {
+  return {
+    id: asString(payload.id),
+    chatId: asString(payload.chat_id),
+    initiatedBy: asString(payload.initiated_by),
+    participantId: asString(payload.participant_id),
+    status: asString(payload.status),
+    startedAt: asString(payload.started_at),
+    endedAt: asString(payload.ended_at),
+    durationSeconds: Number(payload.duration_seconds ?? 0),
+    summary: asString(payload.summary),
+    transcript: asString(payload.transcript),
+    context: asString(payload.context),
+  };
+}
+
 function readStorage(): Session | null {
   if (typeof window === "undefined") {
     return null;
@@ -374,6 +437,17 @@ function readStorage(): Session | null {
   }
 }
 
+function readTheme(): ThemeMode {
+  if (typeof window === "undefined") {
+    return "dark";
+  }
+  const persisted = window.localStorage.getItem(THEME_KEY);
+  if (persisted === "dark" || persisted === "light") {
+    return persisted;
+  }
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
 function getDashboardPath(role: UserRole) {
   switch (role) {
     case "candidate":
@@ -390,6 +464,7 @@ function getDashboardPath(role: UserRole) {
 export function AppProvider({ children }: PropsWithChildren) {
   const [data, setData] = useState<AppSnapshot>(emptyData);
   const [session, setSession] = useState<Session>({ userId: null, accessToken: null, refreshToken: null });
+  const [theme, setTheme] = useState<ThemeMode>("dark");
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
@@ -397,6 +472,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     if (stored) {
       setSession(stored);
     }
+    setTheme(readTheme());
     setAuthReady(true);
   }, []);
 
@@ -407,6 +483,14 @@ export function AppProvider({ children }: PropsWithChildren) {
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }, [authReady, session]);
+
+  useEffect(() => {
+    if (!authReady || typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(THEME_KEY, theme);
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [authReady, theme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -479,6 +563,8 @@ export function AppProvider({ children }: PropsWithChildren) {
           httpRequest<Array<Record<string, unknown>>>("/notifications", { accessToken: session.accessToken }),
           httpRequest<Array<Record<string, unknown>>>("/favorites/vacancies", { accessToken: session.accessToken }),
           httpRequest<Array<Record<string, unknown>>>("/favorites/resumes", { accessToken: session.accessToken }),
+          httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken }),
+          httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken }),
         ];
 
         if (nextUser.role === "candidate") {
@@ -501,6 +587,8 @@ export function AppProvider({ children }: PropsWithChildren) {
           notificationsResponse,
           favoriteVacanciesResponse,
           favoriteResumesResponse,
+          chatsResponse,
+          callsResponse,
           ...extraResponses
         ] = await Promise.all(requests);
 
@@ -539,8 +627,8 @@ export function AppProvider({ children }: PropsWithChildren) {
           adminCases: nextAdminCases,
           favoriteVacancyIds: (favoriteVacanciesResponse as Array<Record<string, unknown>>).map((item) => asString(item.id)),
           favoriteResumeIds: (favoriteResumesResponse as Array<Record<string, unknown>>).map((item) => asString(item.id)),
-          chats: [],
-          calls: [],
+          chats: (chatsResponse as Array<Record<string, unknown>>).map(toChat),
+          calls: (callsResponse as Array<Record<string, unknown>>).map(toCall),
         }));
       } catch {
         if (cancelled) {
@@ -590,6 +678,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       data,
       sessionUser,
       role,
+      theme,
       activeCandidateProfile,
       activeEmployerProfile,
       authReady,
@@ -639,16 +728,21 @@ export function AppProvider({ children }: PropsWithChildren) {
 
         setSession({ userId: null, accessToken: null, refreshToken: null });
       },
+      toggleTheme() {
+        setTheme((current) => (current === "dark" ? "light" : "dark"));
+      },
       async refreshData() {
         if (!session.accessToken) {
           return;
         }
 
-        const [vacanciesResponse, resumesResponse, applicationsResponse, notificationsResponse] = await Promise.all([
+        const [vacanciesResponse, resumesResponse, applicationsResponse, notificationsResponse, chatsResponse, callsResponse] = await Promise.all([
           httpRequest<Array<Record<string, unknown>>>("/vacancies"),
           httpRequest<Array<Record<string, unknown>>>("/resumes"),
           httpRequest<Array<Record<string, unknown>>>("/applications", { accessToken: session.accessToken }),
           httpRequest<Array<Record<string, unknown>>>("/notifications", { accessToken: session.accessToken }),
+          httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken }),
+          httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken }),
         ]);
 
         setData((current) => ({
@@ -657,6 +751,8 @@ export function AppProvider({ children }: PropsWithChildren) {
           resumes: resumesResponse.map(toResume),
           applications: applicationsResponse.map(toApplication),
           notifications: notificationsResponse.map(toNotification),
+          chats: chatsResponse.map(toChat),
+          calls: callsResponse.map(toCall),
         }));
       },
       async updateCandidateProfile(payload) {
@@ -883,6 +979,66 @@ export function AppProvider({ children }: PropsWithChildren) {
           ),
         }));
       },
+      async loadChatMessages(chatId) {
+        if (!session.accessToken) {
+          throw new Error("Sign in to open chats.");
+        }
+        const response = await httpRequest<Array<Record<string, unknown>>>(`/chats/${chatId}/messages`, {
+          accessToken: session.accessToken,
+        });
+        return response.map(toMessage);
+      },
+      async sendChatMessage(chatId, body) {
+        if (!session.accessToken) {
+          throw new Error("Sign in to send messages.");
+        }
+        await httpRequest<Record<string, unknown>>(`/chats/${chatId}/messages`, {
+          method: "POST",
+          accessToken: session.accessToken,
+          body: JSON.stringify({ body }),
+        });
+        const chatsResponse = await httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken });
+        setData((current) => ({ ...current, chats: chatsResponse.map(toChat) }));
+      },
+      async markChatRead(chatId) {
+        if (!session.accessToken) {
+          throw new Error("Sign in to read chats.");
+        }
+        await httpRequest<{ success: boolean }>(`/chats/${chatId}/read`, {
+          method: "POST",
+          accessToken: session.accessToken,
+        });
+        const chatsResponse = await httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken });
+        setData((current) => ({ ...current, chats: chatsResponse.map(toChat) }));
+      },
+      async startCall(participantId, chatId, context = "") {
+        if (!session.accessToken) {
+          throw new Error("Sign in to start calls.");
+        }
+        await httpRequest<Record<string, unknown>>("/calls", {
+          method: "POST",
+          accessToken: session.accessToken,
+          body: JSON.stringify({
+            participant_id: participantId,
+            chat_id: chatId,
+            context,
+          }),
+        });
+        const callsResponse = await httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken });
+        setData((current) => ({ ...current, calls: callsResponse.map(toCall) }));
+      },
+      async updateCallStatus(callId, status, summary, transcript) {
+        if (!session.accessToken) {
+          throw new Error("Sign in to update calls.");
+        }
+        await httpRequest<Record<string, unknown>>(`/calls/${callId}/status`, {
+          method: "PATCH",
+          accessToken: session.accessToken,
+          body: JSON.stringify({ status, summary, transcript }),
+        });
+        const callsResponse = await httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken });
+        setData((current) => ({ ...current, calls: callsResponse.map(toCall) }));
+      },
       isVacancyFavorite(vacancyId) {
         return data.favoriteVacancyIds.includes(vacancyId);
       },
@@ -890,7 +1046,7 @@ export function AppProvider({ children }: PropsWithChildren) {
         return data.favoriteResumeIds.includes(resumeId);
       },
     }),
-    [activeCandidateProfile, activeEmployerProfile, authReady, data, role, session, sessionUser],
+    [activeCandidateProfile, activeEmployerProfile, authReady, data, role, session, sessionUser, theme],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

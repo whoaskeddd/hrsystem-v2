@@ -1,10 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Geist:wght@400;500;600;700&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Geist:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+:root[data-theme="dark"] {
   color-scheme: dark;
   --color-base: #0d0f13;
   --color-elevated: #191c21;
@@ -17,6 +18,27 @@
   --color-text-muted: #7d808a;
   --shadow-card: 0 16px 32px rgba(0, 0, 0, 0.28);
   --shadow-glow: 0 0 0 1px rgba(218, 186, 121, 0.2), 0 14px 30px rgba(218, 186, 121, 0.08);
+  --background-main:
+    radial-gradient(circle at top, rgba(218, 186, 121, 0.12), transparent 26%),
+    linear-gradient(180deg, #111318 0%, #0d0f13 100%);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-base: #f3ede2;
+  --color-elevated: #fbf7ee;
+  --color-soft: #f6efe3;
+  --color-border: #d6c7ad;
+  --color-gold: #b68a3a;
+  --color-gold-soft: #8b651f;
+  --color-text-primary: #302411;
+  --color-text-secondary: #6f5c3b;
+  --color-text-muted: #9a8561;
+  --shadow-card: 0 14px 34px rgba(139, 101, 31, 0.14);
+  --shadow-glow: 0 0 0 1px rgba(182, 138, 58, 0.24), 0 16px 30px rgba(182, 138, 58, 0.12);
+  --background-main:
+    radial-gradient(circle at top, rgba(182, 138, 58, 0.24), transparent 40%),
+    linear-gradient(180deg, #fffdfa 0%, #f3ede2 100%);
 }
 
 * {
@@ -30,9 +52,7 @@ html {
 body {
   margin: 0;
   font-family: "DM Sans", "Segoe UI", sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(218, 186, 121, 0.12), transparent 26%),
-    linear-gradient(180deg, #111318 0%, #0d0f13 100%);
+  background: var(--background-main);
   color: var(--color-text-primary);
 }
 

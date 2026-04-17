@@ -19,7 +19,7 @@ const publicNavigation: NavigationItem[] = [
 
 export function AppShell() {
   const navigate = useNavigate();
-  const { data, role, sessionUser, signOut } = useAppContext();
+  const { data, role, sessionUser, signOut, theme, toggleTheme } = useAppContext();
   const unreadNotifications = data.notifications.filter((item) => !item.isRead).length;
   const dashboardPath = getDashboardPath(role);
   const dashboardLabel = role === "employer" ? "Кабинет компании" : role === "admin" ? "Админка" : "Мой кабинет";
@@ -74,6 +74,9 @@ export function AppShell() {
             <div className="hidden rounded-full border border-white/8 bg-white/5 px-4 py-2 text-sm text-secondary lg:block">
               {sessionUser ? `${sessionUser.fullName} • ${unreadNotifications} новых уведомления` : "Москва • 12 480 вакансий"}
             </div>
+            <Button variant="secondary" onClick={toggleTheme}>
+              {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+            </Button>
             {sessionUser ? (
               <div className="hidden items-center gap-2 sm:flex">
                 <Button variant="secondary" onClick={() => navigate(dashboardPath)}>

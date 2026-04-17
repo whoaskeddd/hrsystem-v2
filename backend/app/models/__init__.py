@@ -1,6 +1,10 @@
 from app.models.entities import (
     Application,
     CandidateProfile,
+    CallSession,
+    Chat,
+    ChatMessage,
+    ChatParticipant,
     Company,
     EmployerProfile,
     FavoriteResume,
@@ -18,6 +22,10 @@ from app.models.entities import (
 __all__ = [
     "Application",
     "CandidateProfile",
+    "CallSession",
+    "Chat",
+    "ChatMessage",
+    "ChatParticipant",
     "Company",
     "EmployerProfile",
     "FavoriteResume",

@@ -145,6 +145,61 @@ class FavoriteResume(Base):
     resume_id: Mapped[str] = mapped_column(String(36), ForeignKey("resumes.id", ondelete="CASCADE"), index=True)
 
 
+class Chat(Base):
+    __tablename__ = "chats"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    vacancy_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("vacancies.id", ondelete="SET NULL"), nullable=True)
+    application_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("applications.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ChatParticipant(Base):
+    __tablename__ = "chat_participants"
+    __table_args__ = (UniqueConstraint("chat_id", "user_id", name="uq_chat_participant"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[str] = mapped_column(String(36), ForeignKey("chats.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    unread_count: Mapped[int] = mapped_column(Integer, default=0)
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    chat_id: Mapped[str] = mapped_column(String(36), ForeignKey("chats.id", ondelete="CASCADE"), index=True)
+    sender_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    body: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(30), default="sent")
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CallSession(Base):
+    __tablename__ = "call_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    chat_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("chats.id", ondelete="SET NULL"), nullable=True, index=True)
+    initiated_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    participant_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="requested")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    transcript: Mapped[str] = mapped_column(Text, default="")
+    context: Mapped[str] = mapped_column(Text, default="")
+
+
 class Notification(Base):
     __tablename__ = "notifications"
 

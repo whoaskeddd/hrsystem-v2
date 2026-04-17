@@ -16,8 +16,8 @@ export default {
         muted: "var(--color-text-muted)",
       },
       boxShadow: {
-        card: "0 16px 32px rgba(0, 0, 0, 0.28)",
-        glow: "0 0 0 1px rgba(218, 186, 121, 0.2), 0 14px 30px rgba(218, 186, 121, 0.08)",
+        card: "var(--shadow-card)",
+        glow: "var(--shadow-glow)",
       },
       borderRadius: {
         shell: "24px",

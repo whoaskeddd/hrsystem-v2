@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models import (
     Application,
+    CallSession,
     CandidateProfile,
+    Chat,
+    ChatMessage,
+    ChatParticipant,
     Company,
     EmployerProfile,
     Notification,
@@ -25,51 +29,57 @@ def seed_if_empty(db: Session) -> None:
         return
 
     candidate = User(
-        full_name="Анна Смирнова",
+        full_name="Anna Smirnova",
         email="anna@hrplatform.dev",
         password_hash=hash_password("demo-password"),
         role=UserRole.candidate,
         headline="Senior Frontend Engineer",
-        city="Москва",
-        status="Открыта к предложениям",
+        city="Moscow",
+        status="Open to opportunities",
     )
     employer = User(
-        full_name="Игорь Беляев",
+        full_name="Igor Belyaev",
         email="igor@aurumlabs.dev",
         password_hash=hash_password("demo-password"),
         role=UserRole.employer,
         headline="Head of Product Hiring",
-        city="Москва",
-        status="Нанимает",
+        city="Moscow",
+        status="Hiring",
     )
     admin = User(
-        full_name="Мария Орлова",
+        full_name="Maria Orlova",
         email="admin@hrplatform.dev",
         password_hash=hash_password("demo-password"),
         role=UserRole.admin,
         headline="Platform Administrator",
-        city="Москва",
-        status="На смене",
+        city="Moscow",
+        status="On duty",
     )
     db.add_all([candidate, employer, admin])
     db.flush()
 
-    company = Company(owner_user_id=employer.id, name="Aurum Labs", description="HRTech платформа", office="Москва", is_verified=True)
+    company = Company(
+        owner_user_id=employer.id,
+        name="Aurum Labs",
+        description="HRTech platform",
+        office="Moscow",
+        is_verified=True,
+    )
     db.add(company)
     db.flush()
 
     db.add(
         CandidateProfile(
             user_id=candidate.id,
-            headline="Старший frontend-разработчик",
-            about="Фокус на сложных B2B интерфейсах.",
-            location="Москва",
-            preferred_format="Гибрид",
-            salary_expectation="250 000 ₽",
-            experience="6 лет",
-            availability="Через 2 недели",
+            headline="Senior frontend developer",
+            about="Focus on complex B2B interfaces.",
+            location="Moscow",
+            preferred_format="Hybrid",
+            salary_expectation="250 000 RUB",
+            experience="6 years",
+            availability="In 2 weeks",
             skills=["React", "TypeScript"],
-            summary=["Запуск design system"],
+            summary=["Launched design system"],
         )
     )
     db.add(
@@ -77,11 +87,11 @@ def seed_if_empty(db: Session) -> None:
             user_id=employer.id,
             company_id=company.id,
             company_name=company.name,
-            position="Руководитель найма",
-            about_company="Строим HRTech платформу",
-            office="Москва",
+            position="Head of Hiring",
+            about_company="Building an HRTech platform",
+            office="Moscow",
             hiring_focus=["Frontend", "Design"],
-            team_size="247 сотрудников",
+            team_size="247 employees",
             response_rate="92%",
         )
     )
@@ -90,18 +100,18 @@ def seed_if_empty(db: Session) -> None:
         owner_user_id=employer.id,
         company_id=company.id,
         company_name=company.name,
-        title="Старший frontend-инженер",
-        salary="280 000 ₽",
-        experience="3-6 лет",
-        location="Москва",
-        format="Гибрид",
-        employment="Полная занятость",
+        title="Senior Frontend Engineer",
+        salary="280 000 RUB",
+        experience="3-6 years",
+        location="Moscow",
+        format="Hybrid",
+        employment="Full-time",
         status=VacancyStatus.published,
         note="React, TypeScript",
-        description="Роль в продуктовой команде",
-        responsibilities=["Развивать кабинеты"],
-        requirements=["Уверенный React"],
-        perks=["Сильная команда"],
+        description="Product role in a core team",
+        responsibilities=["Develop core cabinet flows"],
+        requirements=["Strong React knowledge"],
+        perks=["Strong team"],
         published_at=datetime.now(timezone.utc),
     )
     db.add(vacancy)
@@ -110,33 +120,64 @@ def seed_if_empty(db: Session) -> None:
     resume = Resume(
         candidate_id=candidate.id,
         candidate_name=candidate.full_name,
-        role="Старший frontend-разработчик",
-        experience="6 лет опыта",
-        salary="250 000 ₽",
-        location="Москва",
+        role="Senior Frontend Developer",
+        experience="6 years",
+        salary="250 000 RUB",
+        location="Moscow",
         visibility="public",
-        about="Опыт в кабинетах и аналитике",
+        about="Experience in enterprise dashboards and analytics.",
         skills=["React", "TypeScript"],
-        education="МГТУ им. Баумана",
-        format_preference="Гибрид",
+        education="Bauman Moscow State Technical University",
+        format_preference="Hybrid",
     )
     db.add(resume)
     db.flush()
 
+    application = Application(
+        vacancy_id=vacancy.id,
+        candidate_id=candidate.id,
+        status="screening",
+        cover_letter="Ready to discuss the role.",
+    )
+    db.add(application)
+    db.flush()
+
+    chat = Chat(created_by=employer.id, vacancy_id=vacancy.id, application_id=application.id)
+    db.add(chat)
+    db.flush()
+
+    db.add_all(
+        [
+            ChatParticipant(chat_id=chat.id, user_id=candidate.id, unread_count=1),
+            ChatParticipant(chat_id=chat.id, user_id=employer.id, unread_count=0),
+        ]
+    )
     db.add(
-        Application(
-            vacancy_id=vacancy.id,
-            candidate_id=candidate.id,
-            status="Первичный скрининг",
-            cover_letter="Готова обсудить роль",
+        ChatMessage(
+            chat_id=chat.id,
+            sender_id=employer.id,
+            body="Hello! When is it convenient for you to have a call?",
+            status="sent",
+        )
+    )
+    db.add(
+        CallSession(
+            chat_id=chat.id,
+            initiated_by=employer.id,
+            participant_id=candidate.id,
+            status="ended",
+            context="Initial screening",
+            summary="Discussed stack and planned technical interview.",
+            duration_seconds=1180,
+            ended_at=datetime.now(timezone.utc),
         )
     )
 
     db.add(
         Notification(
             user_id=candidate.id,
-            title="Новый ответ от работодателя",
-            description="Aurum Labs ответили по вакансии",
+            title="New employer response",
+            description="Aurum Labs replied to your application.",
             is_read=False,
         )
     )

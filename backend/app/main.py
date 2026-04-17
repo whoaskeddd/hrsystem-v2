@@ -36,14 +36,4 @@ def healthcheck() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/api/v1/chats")
-def chats_not_started() -> dict:
-    raise ApiError("not_implemented", "Messaging milestone is not started yet", status_code=501)
-
-
-@app.get("/api/v1/calls")
-def calls_not_started() -> dict:
-    raise ApiError("not_implemented", "Calls milestone is not started yet", status_code=501)
-
-
 app.include_router(api_router, prefix=settings.api_prefix)

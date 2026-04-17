@@ -136,3 +136,58 @@ class AuthResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: dict
+
+
+class ChatCreate(BaseModel):
+    peer_user_id: str
+    vacancy_id: str | None = None
+    application_id: str | None = None
+
+
+class ChatOut(ORMModel):
+    id: str
+    vacancy_id: str | None
+    application_id: str | None
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatMessageCreate(BaseModel):
+    body: str
+
+
+class ChatMessageOut(ORMModel):
+    id: str
+    chat_id: str
+    sender_id: str
+    body: str
+    status: str
+    sent_at: datetime
+    read_at: datetime | None
+
+
+class CallCreate(BaseModel):
+    participant_id: str
+    chat_id: str | None = None
+    context: str = ""
+
+
+class CallPatchStatus(BaseModel):
+    status: str
+    summary: str | None = None
+    transcript: str | None = None
+
+
+class CallOut(ORMModel):
+    id: str
+    chat_id: str | None
+    initiated_by: str
+    participant_id: str
+    status: str
+    started_at: datetime
+    ended_at: datetime | None
+    duration_seconds: int
+    summary: str
+    transcript: str
+    context: str
