@@ -908,10 +908,12 @@ export function AppProvider({ children }: PropsWithChildren) {
             cover_letter: coverLetter,
           }),
         });
+        const chatsResponse = await httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken });
 
         setData((current) => ({
           ...current,
           applications: [...current.applications.filter((item) => item.id !== asString(application.id)), toApplication(application)],
+          chats: chatsResponse.map(toChat),
         }));
       },
       async toggleFavoriteVacancy(vacancyId) {

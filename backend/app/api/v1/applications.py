@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -5,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_roles
 from app.core.errors import ApiError
 from app.db.session import get_db
-from app.models import Application, User, UserRole, Vacancy
+from app.models import Application, Chat, ChatMessage, ChatParticipant, Notification, User, UserRole, Vacancy
 from app.schemas.domain import ApplicationCreate, ApplicationPatchStatus
 
 router = APIRouter(prefix="/applications", tags=["applications"])
@@ -50,6 +52,44 @@ def create_application(
 
     item = Application(vacancy_id=payload.vacancy_id, candidate_id=current_user.id, cover_letter=payload.cover_letter, status="submitted")
     db.add(item)
+    db.flush()
+
+    existing_chat = db.execute(select(Chat).where(Chat.application_id == item.id)).scalar_one_or_none()
+    if not existing_chat:
+        chat = Chat(
+            created_by=current_user.id,
+            vacancy_id=vacancy.id,
+            application_id=item.id,
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(chat)
+        db.flush()
+
+        employer_id = vacancy.owner_user_id
+        db.add_all(
+            [
+                ChatParticipant(chat_id=chat.id, user_id=current_user.id, unread_count=0),
+                ChatParticipant(chat_id=chat.id, user_id=employer_id, unread_count=1),
+            ]
+        )
+
+        first_message = payload.cover_letter.strip() or f"Application for vacancy: {vacancy.title}"
+        db.add(
+            ChatMessage(
+                chat_id=chat.id,
+                sender_id=current_user.id,
+                body=first_message,
+                status="sent",
+            )
+        )
+        db.add(
+            Notification(
+                user_id=employer_id,
+                title="New application",
+                description=f"{current_user.full_name} applied for vacancy '{vacancy.title}'.",
+            )
+        )
+
     db.commit()
     db.refresh(item)
     return item

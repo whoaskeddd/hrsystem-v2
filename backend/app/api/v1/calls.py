@@ -81,12 +81,16 @@ async def patch_call_status(
     current_user: User = Depends(get_current_user),
 ):
     call = _assert_call_access(db.get(CallSession, call_id), current_user)
+    previous_status = call.status
     call.status = payload.status
 
     if payload.summary is not None:
         call.summary = payload.summary
     if payload.transcript is not None:
         call.transcript = payload.transcript
+
+    if payload.status in {"accepted", "in_progress"} and previous_status == "requested":
+        call.started_at = datetime.now(timezone.utc)
 
     if payload.status in {"ended", "rejected", "missed"} and call.ended_at is None:
         call.ended_at = datetime.now(timezone.utc)

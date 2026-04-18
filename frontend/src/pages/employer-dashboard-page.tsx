@@ -73,7 +73,7 @@ export function EmployerDashboardPage() {
 
     try {
       await updateEmployerProfile(form);
-      setSuccess("Профиль компании обновлен через backend.");
+      setSuccess("Профиль компании успешно обновлен.");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Не удалось сохранить профиль.");
     } finally {
@@ -164,8 +164,8 @@ export function EmployerDashboardPage() {
         />
 
         <div className="space-y-6">
+          <div id="employer-overview" className="relative -top-24" />
           <section className="grid gap-4 lg:grid-cols-3">
-            <div id="employer-overview" className="relative -top-24" />
             <StatCard label="Вакансий компании" value={String(companyVacancies.length)} meta="Каталог связан с /vacancies" />
             <StatCard label="Откликов в работе" value={String(companyApplications.length)} meta="Статусы приходят из /applications" />
             <StatCard label="Response rate" value={activeEmployerProfile.responseRate} meta="Значение хранится в employer profile" />
@@ -182,8 +182,8 @@ export function EmployerDashboardPage() {
             </div>
           </SectionCard>
 
+          <div id="employer-company-profile" className="relative -top-24" />
           <SectionCard title="Профиль компании" eyebrow="PATCH /employer/profile">
-            <div id="employer-company-profile" className="relative -top-24" />
             <form className="grid gap-4" onSubmit={handleSubmit}>
               {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
               {success ? <StatusBanner tone="success">{success}</StatusBanner> : null}
@@ -223,8 +223,8 @@ export function EmployerDashboardPage() {
             </form>
           </SectionCard>
 
+          <div id="employer-vacancies" className="relative -top-24" />
           <SectionCard title="Вакансии компании" eyebrow="Live list">
-            <div id="employer-vacancies" className="relative -top-24" />
             <form className="mb-6 grid gap-4 rounded-[20px] border border-white/10 bg-soft/60 p-4" onSubmit={handleCreateVacancy}>
               {vacancyError ? <StatusBanner tone="error">{vacancyError}</StatusBanner> : null}
               {vacancySuccess ? <StatusBanner tone="success">{vacancySuccess}</StatusBanner> : null}

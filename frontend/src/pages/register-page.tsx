@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { getDashboardPath, useAppContext } from "../app/app-context";
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { Input } from "../shared/ui/input";
 import { Select } from "../shared/ui/select";
@@ -25,7 +25,7 @@ export function RegisterPage() {
 
     try {
       await register({ fullName, email, password, role, companyName });
-      navigate(getDashboardPath(role), { replace: true });
+      navigate("/", { replace: true });
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Не удалось создать аккаунт.");
     } finally {
@@ -42,7 +42,7 @@ export function RegisterPage() {
             <p className="text-sm uppercase tracking-[0.22em] text-gold-soft/80">Регистрация</p>
             <h1 className="mt-3 font-display text-4xl font-semibold text-primary">Создайте аккаунт</h1>
             <p className="mt-3 text-sm leading-6 text-secondary">
-              Выберите роль и заполните данные, чтобы сразу перейти в свое рабочее пространство.
+              Выберите роль и заполните данные, чтобы сразу перейти в рабочее пространство.
             </p>
           </div>
 

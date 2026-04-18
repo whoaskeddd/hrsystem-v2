@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAppContext, type Message } from "../app/app-context";
 import { Button } from "../shared/ui/button";
@@ -28,6 +28,11 @@ export function MessagesPage() {
 
   useEffect(() => {
     if (!activeChatId && sortedChats.length > 0) {
+      setActiveChatId(sortedChats[0].id);
+      return;
+    }
+
+    if (activeChatId && sortedChats.length > 0 && !sortedChats.some((chat) => chat.id === activeChatId)) {
       setActiveChatId(sortedChats[0].id);
     }
   }, [activeChatId, sortedChats]);
@@ -74,7 +79,7 @@ export function MessagesPage() {
       if (activeChatId) {
         void loadChatMessages(activeChatId).then(setMessages).catch(() => undefined);
       }
-    }, 10000);
+    }, 3000);
 
     return () => {
       window.clearInterval(interval);
@@ -107,6 +112,7 @@ export function MessagesPage() {
       const nextMessages = await loadChatMessages(activeChat.id);
       setMessages(nextMessages);
       setDraft("");
+      await markChatRead(activeChat.id);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Failed to send message.");
     } finally {
@@ -118,7 +124,7 @@ export function MessagesPage() {
     <div className="page-enter space-y-6">
       <PageTopBar
         title="Сообщения"
-        subtitle="Чаты подключены к backend API. Обновление списка идет автоматически каждые 10 секунд."
+        subtitle="Чаты подключены к backend API. Новые сообщения и статусы синхронизируются автоматически."
       />
 
       <div className="grid gap-6 2xl:grid-cols-[360px_minmax(0,1fr)]">

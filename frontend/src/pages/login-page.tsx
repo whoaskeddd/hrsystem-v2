@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import { getDashboardPath, useAppContext } from "../app/app-context";
+import { useAppContext } from "../app/app-context";
 import { Button } from "../shared/ui/button";
 import { Input } from "../shared/ui/input";
 import { StatusBanner } from "../shared/ui/status-banner";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { signIn } = useAppContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,15 +21,7 @@ export function LoginPage() {
 
     try {
       await signIn(email, password);
-      const targetPath =
-        email === "igor@aurumlabs.dev"
-          ? getDashboardPath("employer")
-          : email === "admin@hrplatform.dev"
-            ? getDashboardPath("admin")
-            : typeof location.state === "object" && location.state && "from" in location.state
-              ? String(location.state.from)
-              : getDashboardPath("candidate");
-      navigate(targetPath, { replace: true });
+      navigate("/", { replace: true });
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Не удалось выполнить вход.");
     } finally {
@@ -71,18 +62,6 @@ export function LoginPage() {
               <Button type="button" variant="secondary" onClick={() => navigate("/auth/register")}>
                 Создать аккаунт
               </Button>
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-white/8 pt-4 text-sm text-secondary sm:flex-row sm:items-center sm:justify-between">
-              <Link to="/auth/forgot-password" className="text-gold-soft transition hover:text-gold">
-                Забыли пароль?
-              </Link>
-              <p>
-                Нет аккаунта?{" "}
-                <Link to="/auth/register" className="text-gold-soft transition hover:text-gold">
-                  Зарегистрироваться
-                </Link>
-              </p>
             </div>
           </form>
         </div>
