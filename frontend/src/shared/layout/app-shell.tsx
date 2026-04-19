@@ -18,6 +18,13 @@ const MessageIcon = () => (
   </svg>
 );
 
+const NotificationIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+    <path d="M12 4a4 4 0 0 0-4 4v2.2c0 .7-.2 1.3-.6 1.9L6 14.5h12l-1.4-2.4a3.8 3.8 0 0 1-.6-1.9V8a4 4 0 0 0-4-4Z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10 18a2 2 0 0 0 4 0" strokeLinecap="round" />
+  </svg>
+);
+
 function NavigationLink({ item, compact = false }: { item: NavigationItem; compact?: boolean }) {
   return (
     <NavLink
@@ -92,9 +99,20 @@ export function AppShell() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <div className="hidden rounded-full border border-white/8 bg-white/5 px-4 py-2 text-sm text-secondary lg:block">
-              {sessionUser ? `${sessionUser.fullName} • ${unreadNotifications} новых уведомлений` : "Москва • 12 480 вакансий"}
-            </div>
+            {sessionUser ? (
+              <button
+                type="button"
+                className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/8 bg-white/5 text-secondary transition hover:border-gold/30 hover:text-primary"
+                aria-label="Уведомления"
+              >
+                <NotificationIcon />
+                {unreadNotifications > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-semibold text-black">
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
 
             {sessionUser ? (
               <button

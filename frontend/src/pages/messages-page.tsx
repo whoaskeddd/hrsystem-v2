@@ -270,12 +270,12 @@ export function MessagesPage() {
       <PageTopBar title="Сообщения" subtitle="Переписка с компаниями и кандидатами в одном встроенном мессенджере." />
 
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <SectionCard title="Диалоги" eyebrow={`${sortedChats.length} чатов`} className="overflow-hidden p-0 xl:h-[calc(100vh-230px)]">
+        <SectionCard title="Диалоги" eyebrow={`${sortedChats.length} чатов`} className="flex flex-col overflow-hidden p-0 xl:h-[calc(100vh-230px)]">
           <div className="border-b border-white/8 px-5 py-4 sm:px-6">
             <Input value={chatSearch} onChange={(event) => setChatSearch(event.target.value)} placeholder="Поиск по компании, вакансии или сообщению" />
           </div>
 
-          <div className="max-h-[720px] overflow-y-auto p-3 sm:p-4 xl:h-[calc(100%-74px)] xl:max-h-none">
+          <div className="max-h-[720px] overflow-y-auto p-3 sm:p-4 xl:min-h-0 xl:flex-1 xl:max-h-none">
             {filteredChats.length === 0 ? (
               <Surface
                 title={sortedChats.length === 0 ? "Пока нет чатов" : "Ничего не найдено"}
@@ -329,7 +329,7 @@ export function MessagesPage() {
         <SectionCard
           title={chatTitle}
           eyebrow={activeChat ? activeChat.vacancyTitle || activeChat.companyName || "Открытый диалог" : "Выберите диалог"}
-          className={["overflow-hidden p-0 xl:h-[calc(100vh-230px)]", highlightIncoming ? "message-arrival-blink" : ""].join(" ")}
+          className={["flex flex-col overflow-hidden p-0 xl:h-[calc(100vh-230px)]", highlightIncoming ? "message-arrival-blink" : ""].join(" ")}
         >
           {!activeChat ? (
             <div className="flex min-h-[720px] items-center justify-center p-8">
@@ -404,3 +404,4 @@ export function MessagesPage() {
     </div>
   );
 }
+
