@@ -4,7 +4,6 @@ import { AppShell } from "./shared/layout/app-shell";
 import { AuthGuard } from "./shared/routes/auth-guard";
 import { AdminPage } from "./pages/admin-page";
 import { EmployerDashboardPage } from "./pages/employer-dashboard-page";
-import { CallsPage } from "./pages/calls-page";
 import { CandidateProfilePage } from "./pages/candidate-profile-page";
 import { ForgotPasswordPage } from "./pages/forgot-password-page";
 import { LandingPage } from "./pages/landing-page";
@@ -32,7 +31,6 @@ export const router = createBrowserRouter([
         children: [
           { path: "resumes", element: <ResumesPage /> },
           { path: "messages", element: <MessagesPage /> },
-          { path: "calls", element: <CallsPage /> },
         ],
       },
       {

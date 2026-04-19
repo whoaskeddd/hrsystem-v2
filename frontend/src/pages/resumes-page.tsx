@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { Resume } from "../app/app-context";
-import { useAppContext } from "../app/app-context";
 import { httpRequest } from "../shared/api/http-client";
-import { Button } from "../shared/ui/button";
 import { FilterPanel } from "../shared/ui/filter-panel";
 import { FilterSection } from "../shared/ui/filter-section";
 import { useDelayedLoading } from "../shared/hooks/use-delayed-loading";
@@ -38,7 +36,6 @@ function ResumesSkeleton() {
 type ResumeSort = "updated_desc" | "updated_asc" | "name_asc" | "role_asc";
 
 export function ResumesPage() {
-  const { isResumeFavorite, toggleFavoriteResume } = useAppContext();
   const { isLoaded, showSkeleton } = useDelayedLoading({ totalMs: 980, delayMs: 220 });
   const [query, setQuery] = useState("");
   const [remoteOnly, setRemoteOnly] = useState(false);
@@ -50,50 +47,36 @@ export function ResumesPage() {
     let cancelled = false;
 
     async function loadResumes() {
-      const params = new URLSearchParams({
-        page: "1",
-        page_size: "100",
-      });
+      const params = new URLSearchParams({ page: "1", page_size: "100" });
 
-      if (query.trim()) {
-        params.set("q", query.trim());
-      }
-
-      if (remoteOnly) {
-        params.set("remote", "true");
-      }
-
+      if (query.trim()) params.set("q", query.trim());
+      if (remoteOnly) params.set("remote", "true");
       params.set("sort", sortBy === "updated_asc" ? "updated_at" : "-updated_at");
 
       try {
         const response = await httpRequest<Array<Record<string, unknown>>>(`/resumes?${params.toString()}`);
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
-        const mapped: Resume[] = response.map((item) => ({
-          id: String(item.id ?? ""),
-          candidateId: String(item.candidate_id ?? ""),
-          candidateName: String(item.candidate_name ?? ""),
-          role: String(item.role ?? ""),
-          experience: String(item.experience ?? ""),
-          salary: String(item.salary ?? ""),
-          location: String(item.location ?? ""),
-          visibility: String(item.visibility ?? ""),
-          updatedAt: String(item.updated_at ?? ""),
-          about: String(item.about ?? ""),
-          skills: Array.isArray(item.skills) ? item.skills.map((x) => String(x)) : [],
-          education: String(item.education ?? ""),
-          formatPreference: String(item.format_preference ?? ""),
-        }));
-
-        setResumes(mapped);
+        setResumes(
+          response.map((item) => ({
+            id: String(item.id ?? ""),
+            candidateId: String(item.candidate_id ?? ""),
+            candidateName: String(item.candidate_name ?? ""),
+            role: String(item.role ?? ""),
+            experience: String(item.experience ?? ""),
+            salary: String(item.salary ?? ""),
+            location: String(item.location ?? ""),
+            visibility: String(item.visibility ?? ""),
+            updatedAt: String(item.updated_at ?? ""),
+            about: String(item.about ?? ""),
+            skills: Array.isArray(item.skills) ? item.skills.map((x) => String(x)) : [],
+            education: String(item.education ?? ""),
+            formatPreference: String(item.format_preference ?? ""),
+          })),
+        );
         setError(null);
       } catch (requestError) {
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         setResumes([]);
         setError(requestError instanceof Error ? requestError.message : "Не удалось загрузить кандидатов.");
       }
@@ -106,9 +89,7 @@ export function ResumesPage() {
   }, [query, remoteOnly, sortBy]);
 
   const candidates = useMemo(() => {
-    const filtered = resumes;
-
-    return [...filtered].sort((left, right) => {
+    return [...resumes].sort((left, right) => {
       switch (sortBy) {
         case "updated_asc":
           return left.updatedAt.localeCompare(right.updatedAt, "en");
@@ -116,7 +97,6 @@ export function ResumesPage() {
           return left.candidateName.localeCompare(right.candidateName, "ru");
         case "role_asc":
           return left.role.localeCompare(right.role, "ru");
-        case "updated_desc":
         default:
           return right.updatedAt.localeCompare(left.updatedAt, "en");
       }
@@ -130,12 +110,7 @@ export function ResumesPage() {
         subtitle="Подберите специалистов по навыкам, роли и формату работы."
         actions={
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_180px]">
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Навыки, должность, имя"
-              className="rounded-full"
-            />
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Навыки, должность, имя" className="rounded-full" />
             <Select value={sortBy} onChange={(event) => setSortBy(event.target.value as ResumeSort)}>
               <option value="updated_desc">Сначала новые</option>
               <option value="updated_asc">Сначала старые</option>
@@ -210,11 +185,7 @@ export function ResumesPage() {
             <ResumesSkeleton />
           ) : (
             <div className={["space-y-4 transition duration-500", isLoaded ? "opacity-100" : "opacity-0"].join(" ")}>
-              {error ? (
-                <div className="rounded-[22px] border border-rose-300/30 bg-rose-500/10 p-6 text-sm text-rose-100">
-                  {error}
-                </div>
-              ) : null}
+              {error ? <div className="rounded-[22px] border border-rose-300/30 bg-rose-500/10 p-6 text-sm text-rose-100">{error}</div> : null}
               {candidates.map((candidate) => (
                 <ListItem
                   key={candidate.id}
@@ -228,9 +199,6 @@ export function ResumesPage() {
                         ))}
                         <Tag>{candidate.salary}</Tag>
                       </div>
-                      <Button variant="secondary" onClick={() => void toggleFavoriteResume(candidate.id)}>
-                        {isResumeFavorite(candidate.id) ? "В избранном" : "Сохранить"}
-                      </Button>
                     </div>
                   }
                 />

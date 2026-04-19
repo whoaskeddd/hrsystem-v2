@@ -14,15 +14,15 @@ import { Tag } from "../shared/ui/tag";
 export function VacancyDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { data, role, applyToVacancy, isVacancyFavorite, toggleFavoriteVacancy } = useAppContext();
+  const { data, role, applyToVacancy } = useAppContext();
   const [vacancy, setVacancy] = useState<Vacancy | null>(null);
   const [relatedVacancies, setRelatedVacancies] = useState<Vacancy[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const alreadyApplied = data.applications.some((item) => item.vacancyId === id);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const alreadyApplied = data.applications.some((item) => item.vacancyId === id);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,9 +50,7 @@ export function VacancyDetailsPage() {
           publishedAt: String(vacancyPayload.published_at ?? ""),
           note: String(vacancyPayload.note ?? ""),
           description: String(vacancyPayload.description ?? ""),
-          responsibilities: Array.isArray(vacancyPayload.responsibilities)
-            ? vacancyPayload.responsibilities.map((x) => String(x))
-            : [],
+          responsibilities: Array.isArray(vacancyPayload.responsibilities) ? vacancyPayload.responsibilities.map((x) => String(x)) : [],
           requirements: Array.isArray(vacancyPayload.requirements) ? vacancyPayload.requirements.map((x) => String(x)) : [],
           perks: Array.isArray(vacancyPayload.perks) ? vacancyPayload.perks.map((x) => String(x)) : [],
         };
@@ -79,25 +77,18 @@ export function VacancyDetailsPage() {
           }))
           .filter((item) => item.id !== currentVacancy.id);
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setVacancy(currentVacancy);
         setRelatedVacancies(related);
         setLoadError(null);
       } catch (requestError) {
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         setVacancy(null);
         setRelatedVacancies([]);
         setLoadError(requestError instanceof Error ? requestError.message : "Не удалось загрузить вакансию.");
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     }
 
@@ -109,41 +100,8 @@ export function VacancyDetailsPage() {
     };
   }, [id]);
 
-  const companyVacancies = useMemo(
-    () => relatedVacancies.filter((item) => item.companyId === vacancy?.companyId),
-    [relatedVacancies, vacancy?.companyId],
-  );
-
+  const companyVacancies = useMemo(() => relatedVacancies.filter((item) => item.companyId === vacancy?.companyId), [relatedVacancies, vacancy?.companyId]);
   const similarVacancies = useMemo(() => relatedVacancies.slice(0, 3), [relatedVacancies]);
-
-  if (loading) {
-    return (
-      <div className="page-enter space-y-6">
-        <SectionCard title="Загрузка вакансии" eyebrow="Please wait">
-          <p className="text-sm text-secondary">Получаем данные вакансии из API.</p>
-        </SectionCard>
-      </div>
-    );
-  }
-
-  if (!vacancy) {
-    return (
-      <div className="page-enter space-y-6">
-        <SectionCard title="Вакансия не найдена" eyebrow="404">
-          <p className="text-sm text-secondary">
-            {loadError ?? "Похоже, карточка была удалена или каталог еще не успел загрузиться."}
-          </p>
-          <div className="mt-4">
-            <Link to="/vacancies">
-              <Button>Вернуться к списку вакансий</Button>
-            </Link>
-          </div>
-        </SectionCard>
-      </div>
-    );
-  }
-
-  const currentVacancy = vacancy;
 
   async function handleApply() {
     if (role === "guest") {
@@ -156,13 +114,17 @@ export function VacancyDetailsPage() {
       return;
     }
 
+    if (!vacancy) {
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     setStatus(null);
 
     try {
-      await applyToVacancy(currentVacancy.id);
-      setStatus("Отклик отправлен и сразу появился в истории applications.");
+      await applyToVacancy(vacancy.id);
+      setStatus("Отклик отправлен.");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Не удалось отправить отклик.");
     } finally {
@@ -170,46 +132,58 @@ export function VacancyDetailsPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="page-enter space-y-6">
+        <SectionCard title="Загрузка вакансии" eyebrow="Подождите">
+          <p className="text-sm text-secondary">Получаем данные вакансии.</p>
+        </SectionCard>
+      </div>
+    );
+  }
+
+  if (!vacancy) {
+    return (
+      <div className="page-enter space-y-6">
+        <SectionCard title="Вакансия не найдена" eyebrow="404">
+          <p className="text-sm text-secondary">{loadError ?? "Карточка вакансии недоступна."}</p>
+          <div className="mt-4">
+            <Link to="/vacancies">
+              <Button>Вернуться к вакансиям</Button>
+            </Link>
+          </div>
+        </SectionCard>
+      </div>
+    );
+  }
+
   return (
     <div className="page-enter space-y-6">
       <PageTopBar
-        title={currentVacancy.title}
-        subtitle={currentVacancy.description}
+        title={vacancy.title}
+        subtitle={vacancy.description}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Tag>{currentVacancy.salary}</Tag>
-            <Tag>{currentVacancy.experience}</Tag>
-            <Tag>{currentVacancy.format}</Tag>
-            <Tag>{currentVacancy.location}</Tag>
-            <Tag>{currentVacancy.employment}</Tag>
+            <Tag>{vacancy.salary}</Tag>
+            <Tag>{vacancy.experience}</Tag>
+            <Tag>{vacancy.format}</Tag>
+            <Tag>{vacancy.location}</Tag>
+            <Tag>{vacancy.employment}</Tag>
           </div>
         }
       />
 
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <SectionCard title="О роли" eyebrow={currentVacancy.companyName} className="gold-glow-soft overflow-hidden">
+          <SectionCard title="О роли" eyebrow={vacancy.companyName} className="gold-glow-soft overflow-hidden">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
               <div className="space-y-6">
                 {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
                 {status ? <StatusBanner tone="success">{status}</StatusBanner> : null}
-                <p className="max-w-4xl text-sm leading-7 text-secondary">{currentVacancy.note}</p>
+                <p className="max-w-4xl text-sm leading-7 text-secondary">{vacancy.note}</p>
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={() => void handleApply()} disabled={alreadyApplied || isSubmitting}>
                     {alreadyApplied ? "Отклик уже отправлен" : isSubmitting ? "Отправляем..." : "Откликнуться"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      if (role === "guest") {
-                        navigate("/auth/login");
-                        return;
-                      }
-
-                      void toggleFavoriteVacancy(currentVacancy.id);
-                    }}
-                  >
-                    {isVacancyFavorite(currentVacancy.id) ? "Убрать из избранного" : "Сохранить"}
                   </Button>
                   <Button variant="ghost" onClick={() => navigator.clipboard.writeText(window.location.href)}>
                     Поделиться
@@ -217,20 +191,20 @@ export function VacancyDetailsPage() {
                 </div>
               </div>
 
-              <Surface title="Ключевые параметры" subtitle="То, что приходит из backend и доступно сразу">
+              <Surface title="Ключевые параметры" subtitle="Основные условия вакансии">
                 <div className="grid gap-3 text-sm text-secondary">
                   <div className="flex items-center justify-between rounded-[18px] border border-white/8 px-4 py-3">
                     <span>Компания</span>
-                    <span className="text-gold-soft">{currentVacancy.companyName}</span>
+                    <span className="text-gold-soft">{vacancy.companyName}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-[18px] border border-white/8 px-4 py-3">
                     <span>Статус</span>
-                    <span>{currentVacancy.status}</span>
+                    <span>{vacancy.status}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-[18px] border border-white/8 px-4 py-3">
                     <span>Формат</span>
                     <span>
-                      {currentVacancy.format} / {currentVacancy.location}
+                      {vacancy.format} / {vacancy.location}
                     </span>
                   </div>
                 </div>
@@ -239,9 +213,9 @@ export function VacancyDetailsPage() {
           </SectionCard>
 
           {[
-            { title: "Обязанности", points: currentVacancy.responsibilities },
-            { title: "Требования", points: currentVacancy.requirements },
-            { title: "Что предлагаем", points: currentVacancy.perks },
+            { title: "Обязанности", points: vacancy.responsibilities },
+            { title: "Требования", points: vacancy.requirements },
+            { title: "Что предлагаем", points: vacancy.perks },
           ].map((section) => (
             <SectionCard key={section.title} title={section.title}>
               <ul className="grid gap-3 text-sm leading-7 text-secondary">
@@ -256,28 +230,24 @@ export function VacancyDetailsPage() {
         </div>
 
         <div className="space-y-6">
-          <SectionCard title="Компания" eyebrow="Side panel" className="h-fit">
+          <SectionCard title="Компания" eyebrow="Информация" className="h-fit">
             <div className="space-y-4 text-sm text-secondary">
-              <Surface title={currentVacancy.companyName} subtitle={`ID компании: ${currentVacancy.companyId || "не указан"}`} />
+              <Surface title={vacancy.companyName} subtitle={`ID компании: ${vacancy.companyId || "не указан"}`} />
               <Surface title="Публикация">
-                <p className="text-sm leading-6 text-secondary">
-                  {currentVacancy.publishedAt ? `Опубликовано: ${currentVacancy.publishedAt}` : "Дата публикации не указана."}
-                </p>
+                <p className="text-sm leading-6 text-secondary">{vacancy.publishedAt ? `Опубликовано: ${vacancy.publishedAt}` : "Дата публикации не указана."}</p>
               </Surface>
               <Surface title="Другие вакансии компании">
                 <div className="space-y-2 text-sm text-secondary">
                   {companyVacancies.map((item) => (
                     <p key={item.id}>{item.title}</p>
                   ))}
-                  {companyVacancies.length === 0 ? (
-                    <p>Других вакансий пока нет.</p>
-                  ) : null}
+                  {companyVacancies.length === 0 ? <p>Других вакансий пока нет.</p> : null}
                 </div>
               </Surface>
             </div>
           </SectionCard>
 
-          <SectionCard title="Похожие вакансии" eyebrow="Каталог">
+          <SectionCard title="Похожие вакансии" eyebrow="Подборка">
             <div className="space-y-3">
               {similarVacancies.map((item) => (
                 <Surface key={item.id} title={item.title} subtitle={`${item.companyName} • ${item.location} • ${item.salary}`} />

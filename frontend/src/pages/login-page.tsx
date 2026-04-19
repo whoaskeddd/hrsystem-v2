@@ -30,10 +30,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-160px)]">
-      <div className="fixed inset-0 z-10 bg-black/35 backdrop-blur-md" />
+    <div className="relative min-h-[calc(100vh-160px)] overflow-hidden">
+      <div className="fixed inset-0 z-10 bg-[var(--color-overlay)] backdrop-blur-md" />
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute left-[10%] top-[12%] h-72 w-72 rounded-full bg-gold/10 blur-3xl" />
+        <div className="absolute right-[12%] top-[22%] h-64 w-64 rounded-full bg-soft/85 blur-3xl" />
+      </div>
+
       <div className="relative z-20 flex min-h-[calc(100vh-160px)] items-center justify-center py-10">
-        <div className="w-full max-w-xl rounded-[30px] border border-white/10 bg-base/88 p-8 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="w-full max-w-xl rounded-[32px] border border-border/80 bg-elevated/95 p-8 shadow-card backdrop-blur-xl">
           <div className="mb-8 text-center">
             <p className="text-sm uppercase tracking-[0.22em] text-gold-soft/80">Авторизация</p>
             <h1 className="mt-3 font-display text-4xl font-semibold text-primary">С возвращением</h1>
@@ -56,10 +61,10 @@ export function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="sm:min-w-[180px]">
                 {isSubmitting ? "Входим..." : "Войти"}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate("/auth/register")}>
+              <Button type="button" variant="secondary" onClick={() => navigate("/auth/register")} className="sm:min-w-[220px]">
                 Создать аккаунт
               </Button>
             </div>

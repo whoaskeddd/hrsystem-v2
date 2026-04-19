@@ -43,7 +43,7 @@ def test_register_login_and_me(client):
     assert me_response.json()["email"] == "test.candidate@example.com"
 
 
-def test_chats_and_calls_flow(client):
+def test_chats_flow(client):
     candidate_token, _ = register_user(
         client,
         full_name="Candidate One",
@@ -85,30 +85,6 @@ def test_chats_and_calls_flow(client):
         headers={"Authorization": f"Bearer {employer_token}"},
     )
     assert read_chat.status_code == 200
-
-    create_call = client.post(
-        "/api/v1/calls",
-        headers={"Authorization": f"Bearer {candidate_token}"},
-        json={"participant_id": employer_id, "chat_id": chat_id},
-    )
-    assert create_call.status_code == 200
-    call_id = create_call.json()["id"]
-
-    end_call = client.patch(
-        f"/api/v1/calls/{call_id}/status",
-        headers={"Authorization": f"Bearer {employer_token}"},
-        json={"status": "ended", "summary": "Completed"},
-    )
-    assert end_call.status_code == 200
-    assert end_call.json()["status"] == "ended"
-
-    calls = client.get(
-        "/api/v1/calls",
-        headers={"Authorization": f"Bearer {candidate_token}"},
-    )
-    assert calls.status_code == 200
-    assert calls.json()[0]["id"] == call_id
-
 
 def test_chat_websocket_ping(client):
     candidate_token, _ = register_user(

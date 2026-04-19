@@ -6,9 +6,10 @@ export function Select({ className = "", children, ...props }: SelectProps) {
   return (
     <select
       className={[
-        "w-full rounded-[18px] border border-white/10 bg-soft/70 px-4 py-3 text-sm text-primary outline-none transition focus:border-gold/40 focus:bg-soft/90",
+        "w-full appearance-none rounded-[18px] border border-border bg-[var(--color-field)] px-4 py-3 text-sm text-primary outline-none transition focus:border-gold/50 focus:bg-[var(--color-field-hover)]",
         className,
       ].join(" ")}
+      style={{ color: "var(--color-text-primary)" }}
       {...props}
     >
       {children}

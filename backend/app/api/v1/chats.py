@@ -11,7 +11,7 @@ from app.api.deps import get_current_user
 from app.core.errors import ApiError
 from app.core.security import decode_token
 from app.db.session import SessionLocal, get_db
-from app.models import Chat, ChatMessage, ChatParticipant, Notification, User
+from app.models import Application, Chat, ChatMessage, ChatParticipant, Notification, User, Vacancy
 from app.schemas.domain import ChatCreate, ChatMessageCreate
 
 router = APIRouter(prefix="/chats", tags=["chats"])
@@ -82,6 +82,9 @@ def _serialize_chat(db: Session, chat: Chat, current_user_id: str) -> dict:
     ).scalar_one_or_none()
 
     current_participant = next((item for item in participants if item.user_id == current_user_id), None)
+    peer_id = next((item.user_id for item in participants if item.user_id != current_user_id), "")
+    vacancy = db.get(Vacancy, chat.vacancy_id) if chat.vacancy_id else None
+    application = db.get(Application, chat.application_id) if chat.application_id else None
 
     return {
         "id": chat.id,
@@ -92,9 +95,18 @@ def _serialize_chat(db: Session, chat: Chat, current_user_id: str) -> dict:
         "updated_at": chat.updated_at,
         "participant_ids": user_ids,
         "participant_names": names,
+        "peer_id": peer_id,
+        "peer_name": names.get(peer_id, ""),
         "unread_count": current_participant.unread_count if current_participant else 0,
         "last_message_text": last_message.body if last_message else "",
         "last_message_at": last_message.sent_at if last_message else None,
+        "vacancy_title": vacancy.title if vacancy else "",
+        "company_name": vacancy.company_name if vacancy else "",
+        "application_status": application.status if application else "",
+        "candidate_id": application.candidate_id if application else "",
+        "candidate_name": names.get(application.candidate_id, "") if application else "",
+        "employer_id": vacancy.owner_user_id if vacancy else "",
+        "employer_name": names.get(vacancy.owner_user_id, "") if vacancy else "",
     }
 
 
@@ -315,5 +327,7 @@ async def chat_socket(websocket: WebSocket, chat_id: str, token: str | None = Qu
 
             if payload.get("type") == "ping":
                 await websocket.send_json({"type": "pong"})
+                continue
+
     except WebSocketDisconnect:
         await chat_hub.disconnect(chat_id, websocket)

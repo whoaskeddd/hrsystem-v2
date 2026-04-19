@@ -18,7 +18,7 @@ export function LandingPage() {
     <div className="page-enter space-y-8 pb-8">
       <PageTopBar
         title="Найдите работу мечты или соберите сильную команду"
-        subtitle="Платформа для поиска вакансий, работы с откликами и управления наймом в одном удобном пространстве."
+        subtitle="Платформа для поиска вакансий, работы с откликами, сообщений и управления наймом в одном удобном пространстве."
         actions={<TabGroup tabs={["Соискателям", "Компаниям", "Администраторам"]} activeTab="Соискателям" />}
       />
 
@@ -41,7 +41,7 @@ export function LandingPage() {
                 <Tag>Вакансии</Tag>
                 <Tag>Резюме</Tag>
                 <Tag>Отклики</Tag>
-                <Tag>Избранное</Tag>
+                <Tag>Сообщения</Tag>
                 <Tag>Профили</Tag>
               </div>
             </div>
@@ -50,7 +50,7 @@ export function LandingPage() {
               {[
                 {
                   title: "Для соискателей",
-                  text: "Профиль, отклики, уведомления и сохраненные вакансии всегда под рукой.",
+                  text: "Профиль, отклики, уведомления и переписка с компаниями всегда под рукой.",
                 },
                 {
                   title: "Для компаний",
@@ -76,7 +76,7 @@ export function LandingPage() {
                 <li>Поиск вакансий и резюме</li>
                 <li>Отклики и уведомления</li>
                 <li>Кабинет соискателя и работодателя</li>
-                <li>Избранное и история действий</li>
+                <li>Сообщения и история действий</li>
               </ul>
             </div>
           </div>
@@ -86,11 +86,7 @@ export function LandingPage() {
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Активных вакансий" value={String(data.vacancies.length)} meta="Свежие предложения в каталоге" />
         <StatCard label="Резюме в базе" value={String(data.resumes.length)} meta="Кандидаты с подробными профилями" />
-        <StatCard
-          label="Новых уведомлений"
-          value={String(data.notifications.filter((item) => !item.isRead).length)}
-          meta="Важные события после входа"
-        />
+        <StatCard label="Новых уведомлений" value={String(data.notifications.filter((item) => !item.isRead).length)} meta="Важные события после входа" />
       </section>
 
       <SectionCard title="Актуальные вакансии" eyebrow="Подборка">

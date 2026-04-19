@@ -13,17 +13,16 @@ import { TabGroup } from "../shared/ui/tab-group";
 import { Tag } from "../shared/ui/tag";
 import { Textarea } from "../shared/ui/textarea";
 
-const sidebarItems = ["Профиль", "Резюме", "Отклики", "Избранное", "Уведомления"];
+const sidebarItems = ["Профиль", "Резюме", "Отклики", "Уведомления"];
 const sectionIdByItem: Record<string, string> = {
   Профиль: "candidate-profile",
   Резюме: "candidate-resumes",
   Отклики: "candidate-applications",
-  Избранное: "candidate-applications",
   Уведомления: "candidate-applications",
 };
 
 export function CandidateProfilePage() {
-  const { activeCandidateProfile, data, sessionUser, updateCandidateProfile, createResume, isVacancyFavorite } = useAppContext();
+  const { activeCandidateProfile, data, sessionUser, updateCandidateProfile, createResume } = useAppContext();
   const [isSaving, setIsSaving] = useState(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState("Профиль");
   const [success, setSuccess] = useState<string | null>(null);
@@ -51,18 +50,9 @@ export function CandidateProfilePage() {
     formatPreference: "",
   }));
 
-  const currentResumes = useMemo(
-    () => data.resumes.filter((resume) => resume.candidateId === sessionUser?.id),
-    [data.resumes, sessionUser?.id],
-  );
-  const currentApplications = useMemo(
-    () => data.applications.filter((application) => application.candidateId === sessionUser?.id),
-    [data.applications, sessionUser?.id],
-  );
-  const favoriteVacancies = useMemo(
-    () => data.vacancies.filter((vacancy) => isVacancyFavorite(vacancy.id)),
-    [data.vacancies, isVacancyFavorite],
-  );
+  const currentResumes = useMemo(() => data.resumes.filter((resume) => resume.candidateId === sessionUser?.id), [data.resumes, sessionUser?.id]);
+  const currentApplications = useMemo(() => data.applications.filter((application) => application.candidateId === sessionUser?.id), [data.applications, sessionUser?.id]);
+  const unreadNotifications = data.notifications.filter((item) => !item.isRead).length;
 
   if (!activeCandidateProfile || !sessionUser) {
     return null;
@@ -76,7 +66,7 @@ export function CandidateProfilePage() {
 
     try {
       await updateCandidateProfile(form);
-      setSuccess("Профиль сохранен и синхронизирован с backend.");
+      setSuccess("Профиль сохранен.");
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Не удалось сохранить профиль.");
     } finally {
@@ -127,38 +117,27 @@ export function CandidateProfilePage() {
   function handleSidebarItemClick(item: string) {
     setActiveSidebarItem(item);
     const sectionId = sectionIdByItem[item];
-    if (!sectionId) {
-      return;
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
     <div className="page-enter space-y-6">
       <PageTopBar
         title="Личный кабинет соискателя"
-        subtitle="Профиль, резюме, отклики и уведомления уже работают поверх реальных backend-данных."
+        subtitle="Профиль, резюме, отклики и уведомления собраны в одном кабинете."
         actions={<TabGroup tabs={["Профиль", "Резюме", "Отклики"]} activeTab="Профиль" />}
       />
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <StatCard label="Активных резюме" value={String(currentResumes.length)} meta="Список приходит из /resumes" />
-        <StatCard label="Откликов" value={String(currentApplications.length)} meta="История строится по /applications" />
-        <StatCard
-          label="Новых уведомлений"
-          value={String(data.notifications.filter((item) => !item.isRead).length)}
-          meta="Центр событий на /notifications"
-        />
+        <StatCard label="Активных резюме" value={String(currentResumes.length)} meta="Ваши опубликованные резюме" />
+        <StatCard label="Откликов" value={String(currentApplications.length)} meta="История откликов" />
+        <StatCard label="Новых уведомлений" value={String(unreadNotifications)} meta="Новые события по вашему профилю" />
       </section>
 
       <div className="grid gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
-        <SidebarNav
-          title="Навигация"
-          eyebrow="Кабинет"
-          items={sidebarItems}
-          activeItem={activeSidebarItem}
-          onItemClick={handleSidebarItemClick}
-        />
+        <SidebarNav title="Навигация" eyebrow="Кабинет" items={sidebarItems} activeItem={activeSidebarItem} onItemClick={handleSidebarItemClick} />
 
         <div className="space-y-6">
           <SectionCard title={sessionUser.fullName} eyebrow="Профиль кандидата">
@@ -198,7 +177,7 @@ export function CandidateProfilePage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Редактирование профиля" eyebrow="PATCH /candidate/profile">
+          <SectionCard title="Редактирование профиля" eyebrow="Основная информация">
             <form className="grid gap-4" onSubmit={handleSubmit}>
               {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
               {success ? <StatusBanner tone="success">{success}</StatusBanner> : null}
@@ -214,17 +193,11 @@ export function CandidateProfilePage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm text-secondary">Формат работы</label>
-                  <Input
-                    value={form.preferredFormat}
-                    onChange={(event) => setForm((current) => ({ ...current, preferredFormat: event.target.value }))}
-                  />
+                  <Input value={form.preferredFormat} onChange={(event) => setForm((current) => ({ ...current, preferredFormat: event.target.value }))} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm text-secondary">Ожидания по доходу</label>
-                  <Input
-                    value={form.salaryExpectation}
-                    onChange={(event) => setForm((current) => ({ ...current, salaryExpectation: event.target.value }))}
-                  />
+                  <Input value={form.salaryExpectation} onChange={(event) => setForm((current) => ({ ...current, salaryExpectation: event.target.value }))} />
                 </div>
               </div>
 
@@ -244,11 +217,12 @@ export function CandidateProfilePage() {
             </form>
           </SectionCard>
 
-          <SectionCard title="Мои резюме" eyebrow="Backend catalog">
+          <SectionCard title="Мои резюме" eyebrow="Ваши документы">
             <div id="candidate-resumes" className="relative -top-24" />
             <form className="mb-6 grid gap-4 rounded-[20px] border border-white/10 bg-soft/60 p-4" onSubmit={handleCreateResume}>
               {resumeError ? <StatusBanner tone="error">{resumeError}</StatusBanner> : null}
               {resumeSuccess ? <StatusBanner tone="success">{resumeSuccess}</StatusBanner> : null}
+
               <div className="grid gap-4 xl:grid-cols-2">
                 <Input placeholder="Роль в резюме" value={resumeForm.role} onChange={(event) => setResumeForm((current) => ({ ...current, role: event.target.value }))} required />
                 <Input placeholder="Опыт" value={resumeForm.experience} onChange={(event) => setResumeForm((current) => ({ ...current, experience: event.target.value }))} />
@@ -257,13 +231,16 @@ export function CandidateProfilePage() {
                 <Input placeholder="Видимость (public/private/link)" value={resumeForm.visibility} onChange={(event) => setResumeForm((current) => ({ ...current, visibility: event.target.value }))} />
                 <Input placeholder="Предпочтительный формат" value={resumeForm.formatPreference} onChange={(event) => setResumeForm((current) => ({ ...current, formatPreference: event.target.value }))} />
               </div>
+
               <Input placeholder="Навыки через запятую" value={resumeForm.skillsRaw} onChange={(event) => setResumeForm((current) => ({ ...current, skillsRaw: event.target.value }))} />
               <Input placeholder="Образование" value={resumeForm.education} onChange={(event) => setResumeForm((current) => ({ ...current, education: event.target.value }))} />
               <Textarea placeholder="О себе" value={resumeForm.about} onChange={(event) => setResumeForm((current) => ({ ...current, about: event.target.value }))} />
+
               <Button type="submit" className="w-fit" disabled={isCreatingResume}>
                 {isCreatingResume ? "Создаем..." : "Создать резюме"}
               </Button>
             </form>
+
             <div className="grid gap-4 xl:grid-cols-2">
               {currentResumes.map((resume) => (
                 <article key={resume.id} className="rounded-[22px] border border-white/8 bg-soft/60 p-5 transition hover:border-gold/20">
@@ -282,18 +259,15 @@ export function CandidateProfilePage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Отклики и избранное" eyebrow="Рабочие данные">
+          <SectionCard title="Отклики и статус" eyebrow="Текущая активность">
             <div id="candidate-applications" className="relative -top-24" />
             <div className="grid gap-4 xl:grid-cols-3">
               <Surface
                 title="Текущие отклики"
                 subtitle={currentApplications.length ? currentApplications.map((item) => item.status).join(" • ") : "Пока нет активных откликов"}
               />
-              <Surface
-                title="Избранные вакансии"
-                subtitle={favoriteVacancies.length ? favoriteVacancies.map((item) => item.title).join(" • ") : "Избранное пока пусто"}
-              />
-              <Surface title="Профиль" subtitle="Все изменения сразу уходят в backend и не зависят от локальных моков." />
+              <Surface title="Профиль" subtitle="Изменения в профиле и резюме сохраняются сразу после редактирования." />
+              <Surface title="Уведомления" subtitle={unreadNotifications ? "У вас есть непрочитанные уведомления." : "Новых уведомлений пока нет."} />
             </div>
             <div className="mt-4 grid gap-4 xl:grid-cols-3">
               {activeCandidateProfile.summary.map((item) => (

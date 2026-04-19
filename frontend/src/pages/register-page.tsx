@@ -34,15 +34,20 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-160px)]">
-      <div className="fixed inset-0 z-10 bg-black/35 backdrop-blur-md" />
+    <div className="relative min-h-[calc(100vh-160px)] overflow-hidden">
+      <div className="fixed inset-0 z-10 bg-[var(--color-overlay)] backdrop-blur-md" />
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute left-[8%] top-[10%] h-64 w-64 rounded-full bg-gold/10 blur-3xl" />
+        <div className="absolute right-[10%] top-[18%] h-72 w-72 rounded-full bg-soft/80 blur-3xl" />
+      </div>
+
       <div className="relative z-20 flex min-h-[calc(100vh-160px)] items-center justify-center py-10">
-        <div className="w-full max-w-xl rounded-[30px] border border-white/10 bg-base/88 p-8 shadow-[0_30px_120px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="w-full max-w-xl rounded-[32px] border border-border/80 bg-elevated/95 p-8 shadow-card backdrop-blur-xl">
           <div className="mb-8 text-center">
             <p className="text-sm uppercase tracking-[0.22em] text-gold-soft/80">Регистрация</p>
             <h1 className="mt-3 font-display text-4xl font-semibold text-primary">Создайте аккаунт</h1>
             <p className="mt-3 text-sm leading-6 text-secondary">
-              Выберите роль и заполните данные, чтобы сразу перейти в рабочее пространство.
+              Выберите роль и заполните данные, чтобы сразу перейти в рабочее пространство платформы.
             </p>
           </div>
 
@@ -80,15 +85,15 @@ export function RegisterPage() {
             ) : null}
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Создаем аккаунт..." : "Создать аккаунт"}
+              <Button type="submit" disabled={isSubmitting} className="sm:min-w-[220px]">
+                {isSubmitting ? "Создаём аккаунт..." : "Создать аккаунт"}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate("/auth/login")}>
+              <Button type="button" variant="secondary" onClick={() => navigate("/auth/login")} className="sm:min-w-[180px]">
                 Уже есть аккаунт
               </Button>
             </div>
 
-            <div className="border-t border-white/8 pt-4 text-sm text-secondary">
+            <div className="border-t border-border/80 pt-4 text-sm text-secondary">
               Уже зарегистрированы?{" "}
               <Link to="/auth/login" className="text-gold-soft transition hover:text-gold">
                 Перейти ко входу

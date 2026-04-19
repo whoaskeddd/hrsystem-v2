@@ -38,20 +38,21 @@ npm run dev
 
 `npm run dev` already starts Vite on `0.0.0.0:5173`, so no extra `--host` flag is needed.
 
-If you open it from another device, set backend URL before start:
+Frontend now uses `/api/v1` by default and Vite proxies requests to backend on port `8000`, so local development works without browser-side CORS issues or a hardcoded `localhost:8000`.
+
+If backend is not available on the same machine or you open frontend from another device, set backend URL before start:
 
 ```powershell
 $env:VITE_API_BASE_URL="http://YOUR_PC_IP:8000/api/v1"
+$env:VITE_DEV_PROXY_TARGET="http://YOUR_PC_IP:8000"
 npm run dev
 ```
 
-If `VITE_API_BASE_URL` is not set, frontend automatically uses:
+Default development setup:
 
 ```text
-http://<current-browser-host>:8000/api/v1
+/api/v1  -> proxied by Vite to http://localhost:8000
 ```
-
-Special case: if browser is opened on a service address like `198.18.x.x` or `198.19.x.x`, frontend falls back to `http://localhost:8000/api/v1`.
 
 
 Платформа для поиска работы и подбора персонала в стиле hh.ru, с backend на FastAPI и frontend на React + Tailwind CSS.

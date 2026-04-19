@@ -124,23 +124,18 @@ export type Chat = {
   applicationId: string;
   participantIds: string[];
   participantNames: Record<string, string>;
+  peerId: string;
+  peerName: string;
   unreadCount: number;
   lastMessageText: string;
   lastMessageAt: string;
-};
-
-export type CallRecord = {
-  id: string;
-  chatId: string;
-  initiatedBy: string;
-  participantId: string;
-  status: string;
-  startedAt: string;
-  endedAt: string;
-  durationSeconds: number;
-  summary: string;
-  transcript: string;
-  context: string;
+  vacancyTitle: string;
+  companyName: string;
+  applicationStatus: string;
+  candidateId: string;
+  candidateName: string;
+  employerId: string;
+  employerName: string;
 };
 
 type RegisterPayload = {
@@ -183,7 +178,6 @@ type AppSnapshot = {
   favoriteVacancyIds: string[];
   favoriteResumeIds: string[];
   chats: Chat[];
-  calls: CallRecord[];
 };
 
 type Session = {
@@ -200,6 +194,7 @@ type AppContextValue = {
   activeCandidateProfile: CandidateProfile | null;
   activeEmployerProfile: EmployerProfile | null;
   authReady: boolean;
+  accessToken: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
@@ -217,8 +212,6 @@ type AppContextValue = {
   loadChatMessages: (chatId: string) => Promise<Message[]>;
   sendChatMessage: (chatId: string, body: string) => Promise<void>;
   markChatRead: (chatId: string) => Promise<void>;
-  startCall: (participantId: string, chatId?: string, context?: string) => Promise<void>;
-  updateCallStatus: (callId: string, status: string, summary?: string, transcript?: string) => Promise<void>;
   isVacancyFavorite: (vacancyId: string) => boolean;
   isResumeFavorite: (resumeId: string) => boolean;
 };
@@ -245,7 +238,6 @@ const emptyData: AppSnapshot = {
   favoriteVacancyIds: [],
   favoriteResumeIds: [],
   chats: [],
-  calls: [],
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -381,9 +373,18 @@ function toChat(payload: Record<string, unknown>): Chat {
     applicationId: asString(payload.application_id),
     participantIds: asStringArray(payload.participant_ids),
     participantNames: Object.fromEntries(Object.entries(names).map(([key, value]) => [key, String(value)])),
+    peerId: asString(payload.peer_id),
+    peerName: asString(payload.peer_name),
     unreadCount: Number(payload.unread_count ?? 0),
     lastMessageText: asString(payload.last_message_text),
     lastMessageAt: asString(payload.last_message_at),
+    vacancyTitle: asString(payload.vacancy_title),
+    companyName: asString(payload.company_name),
+    applicationStatus: asString(payload.application_status),
+    candidateId: asString(payload.candidate_id),
+    candidateName: asString(payload.candidate_name),
+    employerId: asString(payload.employer_id),
+    employerName: asString(payload.employer_name),
   };
 }
 
@@ -396,22 +397,6 @@ function toMessage(payload: Record<string, unknown>): Message {
     status: asString(payload.status),
     sentAt: asString(payload.sent_at),
     readAt: asString(payload.read_at),
-  };
-}
-
-function toCall(payload: Record<string, unknown>): CallRecord {
-  return {
-    id: asString(payload.id),
-    chatId: asString(payload.chat_id),
-    initiatedBy: asString(payload.initiated_by),
-    participantId: asString(payload.participant_id),
-    status: asString(payload.status),
-    startedAt: asString(payload.started_at),
-    endedAt: asString(payload.ended_at),
-    durationSeconds: Number(payload.duration_seconds ?? 0),
-    summary: asString(payload.summary),
-    transcript: asString(payload.transcript),
-    context: asString(payload.context),
   };
 }
 
@@ -547,7 +532,6 @@ export function AppProvider({ children }: PropsWithChildren) {
           favoriteVacancyIds: [],
           favoriteResumeIds: [],
           chats: [],
-          calls: [],
         }));
         return;
       }
@@ -561,10 +545,7 @@ export function AppProvider({ children }: PropsWithChildren) {
         const requests: Array<Promise<unknown>> = [
           httpRequest<Array<Record<string, unknown>>>("/applications", { accessToken: session.accessToken }),
           httpRequest<Array<Record<string, unknown>>>("/notifications", { accessToken: session.accessToken }),
-          httpRequest<Array<Record<string, unknown>>>("/favorites/vacancies", { accessToken: session.accessToken }),
-          httpRequest<Array<Record<string, unknown>>>("/favorites/resumes", { accessToken: session.accessToken }),
           httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken }),
-          httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken }),
         ];
 
         if (nextUser.role === "candidate") {
@@ -582,15 +563,7 @@ export function AppProvider({ children }: PropsWithChildren) {
           );
         }
 
-        const [
-          applicationsResponse,
-          notificationsResponse,
-          favoriteVacanciesResponse,
-          favoriteResumesResponse,
-          chatsResponse,
-          callsResponse,
-          ...extraResponses
-        ] = await Promise.all(requests);
+        const [applicationsResponse, notificationsResponse, chatsResponse, ...extraResponses] = await Promise.all(requests);
 
         if (cancelled) {
           return;
@@ -625,10 +598,9 @@ export function AppProvider({ children }: PropsWithChildren) {
           applications: (applicationsResponse as Array<Record<string, unknown>>).map(toApplication),
           notifications: (notificationsResponse as Array<Record<string, unknown>>).map(toNotification),
           adminCases: nextAdminCases,
-          favoriteVacancyIds: (favoriteVacanciesResponse as Array<Record<string, unknown>>).map((item) => asString(item.id)),
-          favoriteResumeIds: (favoriteResumesResponse as Array<Record<string, unknown>>).map((item) => asString(item.id)),
+          favoriteVacancyIds: [],
+          favoriteResumeIds: [],
           chats: (chatsResponse as Array<Record<string, unknown>>).map(toChat),
-          calls: (callsResponse as Array<Record<string, unknown>>).map(toCall),
         }));
       } catch {
         if (cancelled) {
@@ -647,7 +619,6 @@ export function AppProvider({ children }: PropsWithChildren) {
           favoriteVacancyIds: [],
           favoriteResumeIds: [],
           chats: [],
-          calls: [],
         }));
       }
     }
@@ -682,6 +653,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       activeCandidateProfile,
       activeEmployerProfile,
       authReady,
+      accessToken: session.accessToken,
       async signIn(email, password) {
         const response = await httpRequest<ApiAuthResponse>("/auth/login", {
           method: "POST",
@@ -736,13 +708,12 @@ export function AppProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        const [vacanciesResponse, resumesResponse, applicationsResponse, notificationsResponse, chatsResponse, callsResponse] = await Promise.all([
+        const [vacanciesResponse, resumesResponse, applicationsResponse, notificationsResponse, chatsResponse] = await Promise.all([
           httpRequest<Array<Record<string, unknown>>>("/vacancies"),
           httpRequest<Array<Record<string, unknown>>>("/resumes"),
           httpRequest<Array<Record<string, unknown>>>("/applications", { accessToken: session.accessToken }),
           httpRequest<Array<Record<string, unknown>>>("/notifications", { accessToken: session.accessToken }),
           httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken }),
-          httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken }),
         ]);
 
         setData((current) => ({
@@ -752,7 +723,6 @@ export function AppProvider({ children }: PropsWithChildren) {
           applications: applicationsResponse.map(toApplication),
           notifications: notificationsResponse.map(toNotification),
           chats: chatsResponse.map(toChat),
-          calls: callsResponse.map(toCall),
         }));
       },
       async updateCandidateProfile(payload) {
@@ -917,42 +887,10 @@ export function AppProvider({ children }: PropsWithChildren) {
         }));
       },
       async toggleFavoriteVacancy(vacancyId) {
-        if (!session.accessToken) {
-          throw new Error("Sign in to save vacancies.");
-        }
-
-        const isFavorite = data.favoriteVacancyIds.includes(vacancyId);
-
-        await httpRequest<unknown>(`/favorites/vacancies/${vacancyId}`, {
-          method: isFavorite ? "DELETE" : "POST",
-          accessToken: session.accessToken,
-        });
-
-        setData((current) => ({
-          ...current,
-          favoriteVacancyIds: isFavorite
-            ? current.favoriteVacancyIds.filter((item) => item !== vacancyId)
-            : [...current.favoriteVacancyIds, vacancyId],
-        }));
+        void vacancyId;
       },
       async toggleFavoriteResume(resumeId) {
-        if (!session.accessToken) {
-          throw new Error("Sign in to save candidates.");
-        }
-
-        const isFavorite = data.favoriteResumeIds.includes(resumeId);
-
-        await httpRequest<unknown>(`/favorites/resumes/${resumeId}`, {
-          method: isFavorite ? "DELETE" : "POST",
-          accessToken: session.accessToken,
-        });
-
-        setData((current) => ({
-          ...current,
-          favoriteResumeIds: isFavorite
-            ? current.favoriteResumeIds.filter((item) => item !== resumeId)
-            : [...current.favoriteResumeIds, resumeId],
-        }));
+        void resumeId;
       },
       async toggleNotificationRead(notificationId) {
         if (!session.accessToken) {
@@ -983,7 +921,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       },
       async loadChatMessages(chatId) {
         if (!session.accessToken) {
-          throw new Error("Sign in to open chats.");
+          throw new Error("Войдите в аккаунт, чтобы открыть чат.");
         }
         const response = await httpRequest<Array<Record<string, unknown>>>(`/chats/${chatId}/messages`, {
           accessToken: session.accessToken,
@@ -992,7 +930,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       },
       async sendChatMessage(chatId, body) {
         if (!session.accessToken) {
-          throw new Error("Sign in to send messages.");
+          throw new Error("Войдите в аккаунт, чтобы отправлять сообщения.");
         }
         await httpRequest<Record<string, unknown>>(`/chats/${chatId}/messages`, {
           method: "POST",
@@ -1004,7 +942,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       },
       async markChatRead(chatId) {
         if (!session.accessToken) {
-          throw new Error("Sign in to read chats.");
+          throw new Error("Войдите в аккаунт, чтобы читать сообщения.");
         }
         await httpRequest<{ success: boolean }>(`/chats/${chatId}/read`, {
           method: "POST",
@@ -1012,34 +950,6 @@ export function AppProvider({ children }: PropsWithChildren) {
         });
         const chatsResponse = await httpRequest<Array<Record<string, unknown>>>("/chats", { accessToken: session.accessToken });
         setData((current) => ({ ...current, chats: chatsResponse.map(toChat) }));
-      },
-      async startCall(participantId, chatId, context = "") {
-        if (!session.accessToken) {
-          throw new Error("Sign in to start calls.");
-        }
-        await httpRequest<Record<string, unknown>>("/calls", {
-          method: "POST",
-          accessToken: session.accessToken,
-          body: JSON.stringify({
-            participant_id: participantId,
-            chat_id: chatId,
-            context,
-          }),
-        });
-        const callsResponse = await httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken });
-        setData((current) => ({ ...current, calls: callsResponse.map(toCall) }));
-      },
-      async updateCallStatus(callId, status, summary, transcript) {
-        if (!session.accessToken) {
-          throw new Error("Sign in to update calls.");
-        }
-        await httpRequest<Record<string, unknown>>(`/calls/${callId}/status`, {
-          method: "PATCH",
-          accessToken: session.accessToken,
-          body: JSON.stringify({ status, summary, transcript }),
-        });
-        const callsResponse = await httpRequest<Array<Record<string, unknown>>>("/calls", { accessToken: session.accessToken });
-        setData((current) => ({ ...current, calls: callsResponse.map(toCall) }));
       },
       isVacancyFavorite(vacancyId) {
         return data.favoriteVacancyIds.includes(vacancyId);

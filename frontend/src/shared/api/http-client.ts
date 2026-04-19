@@ -2,35 +2,28 @@ function normalizeBaseUrl(value: string) {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
-function isUsableApiHost(hostname: string) {
-  if (!hostname) {
-    return false;
-  }
-
-  if (hostname === "0.0.0.0") {
-    return false;
-  }
-
-  if (hostname.startsWith("198.18.") || hostname.startsWith("198.19.")) {
-    return false;
-  }
-
-  return true;
+function isLegacyLocalApiBaseUrl(value: string) {
+  const normalizedValue = normalizeBaseUrl(value).toLowerCase();
+  return (
+    normalizedValue === "http://localhost:8000/api/v1" ||
+    normalizedValue === "http://127.0.0.1:8000/api/v1" ||
+    normalizedValue === "http://0.0.0.0:8000/api/v1"
+  );
 }
 
 function resolveApiBaseUrl() {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
   if (configuredBaseUrl) {
+    if (isLegacyLocalApiBaseUrl(configuredBaseUrl)) {
+      return "/api/v1";
+    }
+
     return normalizeBaseUrl(configuredBaseUrl);
   }
 
-  if (typeof window !== "undefined") {
-    const { protocol, hostname } = window.location;
-    const resolvedHost = isUsableApiHost(hostname) ? hostname : "localhost";
-    return `${protocol}//${resolvedHost}:8000/api/v1`;
-  }
-
-  return "http://localhost:8000/api/v1";
+  // Prefer same-origin API so local Vite proxy or upstream reverse proxy can
+  // route requests without relying on localhost-specific browser settings.
+  return "/api/v1";
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
