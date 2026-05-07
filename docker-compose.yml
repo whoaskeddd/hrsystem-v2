@@ -1,26 +1,33 @@
-version: "3.9"
-
 services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrsystem_backend
+    environment:
+      APP_NAME: ${APP_NAME:-HR Platform API}
+      DEBUG: ${DEBUG:-false}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-me}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///./hrplatform.db}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    ports:
+      - "${BACKEND_HOST_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: hrsystem_frontend
+    depends_on:
+      - backend
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - CHOKIDAR_USEPOLLING=true
-
-  backend:
-    image: python:3.12-slim
-    container_name: hrsystem_backend_placeholder
-    working_dir: /app
-    command: >
-      sh -c "echo 'Backend placeholder: второй разработчик добавит FastAPI сервис сюда.' && tail -f /dev/null"
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+      VITE_DEV_PROXY_TARGET: ${VITE_DEV_PROXY_TARGET:-http://backend:8000}

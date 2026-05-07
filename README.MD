@@ -1,5 +1,60 @@
 # HR Platform
 
+## Local Run Without Docker
+
+### 1. Backend
+
+```powershell
+cd C:\develop\hrsystem-v2\backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Create `backend\.env` with this minimal config:
+
+```env
+APP_NAME=HR Platform API
+DEBUG=true
+SECRET_KEY=dev-secret-key
+DATABASE_URL=sqlite:///./hrplatform.db
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173
+CORS_ORIGIN_REGEX=^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$
+```
+
+Start backend:
+
+```powershell
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 2. Frontend
+
+```powershell
+cd C:\develop\hrsystem-v2\frontend
+npm install
+npm run dev
+```
+
+`npm run dev` already starts Vite on `0.0.0.0:5173`, so no extra `--host` flag is needed.
+
+Frontend now uses `/api/v1` by default and Vite proxies requests to backend on port `8000`, so local development works without browser-side CORS issues or a hardcoded `localhost:8000`.
+
+If backend is not available on the same machine or you open frontend from another device, set backend URL before start:
+
+```powershell
+$env:VITE_API_BASE_URL="http://YOUR_PC_IP:8000/api/v1"
+$env:VITE_DEV_PROXY_TARGET="http://YOUR_PC_IP:8000"
+npm run dev
+```
+
+Default development setup:
+
+```text
+/api/v1  -> proxied by Vite to http://localhost:8000
+```
+
+
 Платформа для поиска работы и подбора персонала в стиле hh.ru, с backend на FastAPI и frontend на React + Tailwind CSS.
 
 ---

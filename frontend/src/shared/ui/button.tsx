@@ -15,15 +15,15 @@ export function Button({
   ...props
 }: ButtonProps) {
   const variants = {
-    primary: "border-gold/60 bg-gold/10 text-gold-soft shadow-glow hover:border-gold/80 hover:bg-gold/15",
-    secondary: "border-white/10 bg-white/5 text-primary hover:border-white/20 hover:bg-white/8",
-    ghost: "border-transparent bg-transparent text-secondary hover:border-white/10 hover:bg-white/5 hover:text-primary",
+    primary: "border-gold/55 bg-gold/12 text-gold-soft shadow-glow hover:border-gold/75 hover:bg-gold/18",
+    secondary: "border-border bg-[var(--color-field)] text-primary hover:border-gold/30 hover:bg-[var(--color-field-hover)]",
+    ghost: "border-transparent bg-transparent text-secondary hover:border-border hover:bg-[var(--color-field)] hover:text-primary",
   };
 
   return (
     <button
       className={[
-        "rounded-full border px-5 py-3 text-sm font-medium transition duration-200 hover:-translate-y-0.5",
+        "rounded-full border px-5 py-3 text-sm font-medium transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0",
         variants[variant],
         fullWidth ? "w-full" : "",
         className,

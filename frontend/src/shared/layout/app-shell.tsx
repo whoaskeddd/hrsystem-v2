@@ -1,18 +1,80 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
+import { getDashboardPath, useAppContext } from "../../app/app-context";
 import { Button } from "../ui/button";
 
-const mainNavigation = [
-  { to: "/", label: "Главная", end: true },
-  { to: "/vacancies", label: "Вакансии" },
-  { to: "/resumes", label: "Кандидаты" },
-  { to: "/candidate/profile", label: "Кабинет" },
-  { to: "/messages", label: "Сообщения" },
-  { to: "/calls", label: "Звонки" },
-  { to: "/admin", label: "Админка" },
-];
+type NavigationItem = {
+  to: string;
+  label: string;
+  end?: boolean;
+  badge?: number;
+};
+
+const MessageIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+    <path d="M7 10h10" strokeLinecap="round" />
+    <path d="M7 14h6" strokeLinecap="round" />
+    <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const NotificationIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+    <path d="M12 4a4 4 0 0 0-4 4v2.2c0 .7-.2 1.3-.6 1.9L6 14.5h12l-1.4-2.4a3.8 3.8 0 0 1-.6-1.9V8a4 4 0 0 0-4-4Z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10 18a2 2 0 0 0 4 0" strokeLinecap="round" />
+  </svg>
+);
+
+function NavigationLink({ item, compact = false }: { item: NavigationItem; compact?: boolean }) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      className={({ isActive }) =>
+        [
+          compact
+            ? "rounded-[18px] px-3 py-3 text-center text-xs font-medium transition"
+            : "rounded-full border px-4 py-2 text-sm transition duration-200",
+          isActive
+            ? compact
+              ? "bg-gold/10 text-gold-soft shadow-glow"
+              : "border-gold/60 bg-gold/10 text-gold-soft shadow-glow"
+            : compact
+              ? "bg-white/5 text-secondary"
+              : "border-transparent text-secondary hover:border-white/10 hover:bg-white/5 hover:text-primary",
+        ].join(" ")
+      }
+    >
+      <span className="inline-flex items-center gap-2">
+        <span>{item.label}</span>
+        {item.badge && item.badge > 0 ? (
+          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-semibold text-black">
+            {item.badge > 99 ? "99+" : item.badge}
+          </span>
+        ) : null}
+      </span>
+    </NavLink>
+  );
+}
 
 export function AppShell() {
+  const navigate = useNavigate();
+  const { data, role, sessionUser, signOut, theme, toggleTheme } = useAppContext();
+  const unreadNotifications = data.notifications.filter((item) => !item.isRead).length;
+  const unreadMessages = data.chats.reduce((total, chat) => total + chat.unreadCount, 0);
+  const dashboardPath = getDashboardPath(role);
+  const dashboardLabel = role === "employer" ? "Кабинет компании" : role === "admin" ? "Админка" : "Мой кабинет";
+
+  const publicNavigation: NavigationItem[] = [
+    { to: "/", label: "Главная", end: true },
+    { to: "/vacancies", label: "Вакансии" },
+    { to: "/resumes", label: "Кандидаты" },
+    { to: "/messages", label: "Сообщения", badge: unreadMessages },
+  ];
+  const roleNavigation: NavigationItem[] =
+    role === "guest" ? [] : role === "admin" ? [{ to: "/admin", label: "Админка" }] : [{ to: dashboardPath, label: dashboardLabel }];
+  const navigation: NavigationItem[] = [...publicNavigation, ...roleNavigation];
+
   return (
     <div className="min-h-screen bg-base text-primary">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -27,36 +89,74 @@ export function AppShell() {
             <NavLink to="/" className="font-display text-lg font-semibold tracking-[0.18em] text-gold-soft">
               HR PLATFORM
             </NavLink>
-            <div className="hidden text-xs uppercase tracking-[0.24em] text-secondary 2xl:block">
-              Премиальная HR-платформа
-            </div>
+            <div className="hidden text-xs uppercase tracking-[0.24em] text-secondary 2xl:block">Премиальная HR-платформа</div>
           </div>
 
           <nav className="hidden items-center gap-2 xl:flex">
-            {mainNavigation.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  [
-                    "rounded-full border px-4 py-2 text-sm transition duration-200",
-                    isActive
-                      ? "border-gold/60 bg-gold/10 text-gold-soft shadow-glow"
-                      : "border-transparent text-secondary hover:border-white/10 hover:bg-white/5 hover:text-primary",
-                  ].join(" ")
-                }
-              >
-                {item.label}
-              </NavLink>
+            {navigation.map((item) => (
+              <NavigationLink key={item.to} item={item} />
             ))}
           </nav>
 
           <div className="flex items-center gap-3">
-            <div className="hidden rounded-full border border-white/8 bg-white/5 px-4 py-2 text-sm text-secondary lg:block">
-              Москва • 12 480 вакансий
-            </div>
-            <Button className="hidden sm:inline-flex">Вход / Регистрация</Button>
+            {sessionUser ? (
+              <button
+                type="button"
+                className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/8 bg-white/5 text-secondary transition hover:border-gold/30 hover:text-primary"
+                aria-label="Уведомления"
+              >
+                <NotificationIcon />
+                {unreadNotifications > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-semibold text-black">
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
+
+            {sessionUser ? (
+              <button
+                type="button"
+                onClick={() => navigate("/messages")}
+                className={[
+                  "relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/8 bg-white/5 text-secondary transition hover:border-gold/30 hover:text-primary",
+                  unreadMessages > 0 ? "message-arrival-blink" : "",
+                ].join(" ")}
+                aria-label="Открыть сообщения"
+              >
+                <MessageIcon />
+                {unreadMessages > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-semibold text-black">
+                    {unreadMessages > 99 ? "99+" : unreadMessages}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
+
+            <Button variant="secondary" onClick={toggleTheme}>
+              {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+            </Button>
+
+            {sessionUser ? (
+              <div className="hidden items-center gap-2 sm:flex">
+                <Button variant="secondary" onClick={() => navigate(dashboardPath)}>
+                  {dashboardLabel}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    signOut();
+                    navigate("/");
+                  }}
+                >
+                  Выйти
+                </Button>
+              </div>
+            ) : (
+              <Button className="hidden sm:inline-flex" onClick={() => navigate("/auth/login")}>
+                Вход / Регистрация
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -67,20 +167,8 @@ export function AppShell() {
 
       <nav className="sticky bottom-0 z-20 border-t border-white/8 bg-base/90 px-3 py-3 backdrop-blur xl:hidden">
         <div className="grid w-full grid-cols-4 gap-2">
-          {mainNavigation.slice(0, 4).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                [
-                  "rounded-[18px] px-3 py-3 text-center text-xs font-medium transition",
-                  isActive ? "bg-gold/10 text-gold-soft shadow-glow" : "bg-white/5 text-secondary",
-                ].join(" ")
-              }
-            >
-              {item.label}
-            </NavLink>
+          {navigation.slice(0, 4).map((item) => (
+            <NavigationLink key={item.to} item={item} compact />
           ))}
         </div>
       </nav>
