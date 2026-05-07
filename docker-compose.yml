@@ -11,7 +11,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-sqlite:///./hrplatform.db}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     ports:
-      - "${BACKEND_HOST_PORT:-8000}:8000"
+      - "${BACKEND_HOST_PORT:-8002}:8000"
     volumes:
       - ./backend:/app
 
@@ -23,7 +23,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "5173:5173"
+      - "${FRONTEND_HOST_PORT:-5174}:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
